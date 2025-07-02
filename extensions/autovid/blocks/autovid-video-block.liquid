@@ -1,0 +1,160 @@
+{% assign raw_youtube_url = block.settings.product.metafields.custom.youtube_demo_video.value %}
+{% assign youtube_video_url = raw_youtube_url | replace: "https://youtube.com", "https://www.youtube.com" %}
+
+{% assign youtube_summary = block.settings.product.metafields.custom.youtube_demo_summary.value %}
+{% assign shop_domain = shop.domain %}
+
+{% if block.settings.custom_css %}
+  <style>
+    {{ block.settings.custom_css }}
+  </style>
+{% endif %}
+{% assign alignment_style = '' %}
+{% if block.settings.alignment == 'center' %}
+  {% assign alignment_style = 'margin-left: auto; margin-right: auto;' %}
+{% elsif block.settings.alignment == 'left' %}
+  {% assign alignment_style = 'margin-right: auto;' %}
+{% elsif block.settings.alignment == 'right' %}
+  {% assign alignment_style = 'margin-left: auto;' %}
+{% endif %}
+{% if youtube_video_url %}
+  <div id="autovid--video-block" style="padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px; background-color: {{ block.settings.background }};">
+   <div class="block-container-width page-width" id="autovid--video-block-container" >
+    <div id="autovid--video-container"
+     style="max-width: {{ block.settings.max_width }}; {{ alignment_style }}"
+     onclick="console.log('User clicked on video container')">
+      <iframe
+      id="youtube-player-{{ block.settings.product.id }}"
+      width="100%"
+      height="{{ block.settings.video_height }}"
+      src={{ youtube_video_url }}{% if youtube_video_url contains '?' %}&enablejsapi=1{% else %}?enablejsapi=1{% endif %}
+       title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+    </div>
+    {% if block.settings.show_summary and youtube_summary %}
+      <div id="autovid-video-summary">
+        <p>{{ youtube_summary }}</p>
+      </div>
+    {% endif %}
+    </div>
+  </div>
+{% endif %}
+  <script src="https://www.youtube.com/iframe_api"></script>
+ <script>
+  let player;
+  function onYouTubeIframeAPIReady() {
+      player = new YT.Player('youtube-player-{{ block.settings.product.id }}', {
+          events: {
+              'onReady': onPlayerReady,
+              'onStateChange': onPlayerStateChange
+          }
+      });
+  }
+  function onPlayerReady(event) {
+      console.log('Player is ready');
+  }
+  function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+          console.log('User clicked play on product ID: {{ block.settings.product.id }}');
+         // document.getElementById('action-output').innerText = 'Play action triggered at ' + new Date().toLocaleTimeString();
+           triggerCustomAction();
+      }
+  }
+
+  function triggerCustomAction() {
+    console.log("trigger custom action")
+    const shop_url = `{{shop_domain}}`;
+    const api_url = `/a/autovid/update-videocount`
+    
+    const payload = {
+      productId: "{{ block.settings.product.id }}",
+      videoUrl: "{{ youtube_video_url }}",
+    };
+
+    fetch(api_url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to update video count");
+      return res.json();
+    })
+    .then(data => {
+      console.log("Play count updated successfully", data);
+    })
+    .catch(err => {
+      console.error("Error updating video count:", err);
+    });
+  }
+</script>
+
+
+{% schema %}
+{
+  "name": "AutoVid Video Block",
+  "target": "section",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "autofill": true
+    },
+    {
+      "type": "text",
+      "id": "max_width",
+      "label": "Max Width (e.g., 800px or 90%)",
+      "default": "800px"
+    },
+    {
+      "type": "number",
+      "id": "video_height",
+      "label": "Video Height (px)",
+      "default": 315
+    },
+    {
+      "type": "number",
+      "id": "padding_top",
+      "label": "Padding Top (px)",
+      "default": 20
+    },
+    {
+      "type": "number",
+      "id": "padding_bottom",
+      "label": "Padding Bottom (px)",
+      "default": 20
+    },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "Video Alignment",
+      "default": "center",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ]
+    },
+    {
+      "type": "checkbox",
+      "id": "show_summary",
+      "label": "Show YouTube Summary",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "background",
+      "label": "Background Color",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "textarea",
+      "id": "custom_css",
+      "label": "Custom CSS",
+      "info": "Optional CSS to apply styles to this block. Do not include <style> tags."
+    }
+  ]
+}
+{% endschema %}

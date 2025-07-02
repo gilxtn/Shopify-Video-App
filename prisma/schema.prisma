@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+model VideoPlayCount {
+  productId BigInt
+  videoUrl  String
+  shop      String? 
+  playCount Int    @default(0)
+
+  @@id([productId, videoUrl])
+}
+
+model ProductExtendedInfo {
+  id            Int          @id @default(autoincrement())
+  productId     BigInt       @unique
+  shop          String
+  productTitle  String
+  videoUrl      String
+  aiSummary     String
+  highlights    String
+  source_method SourceMethod
+  createdAt     DateTime     @default(now())
+}
+
+enum SourceMethod {
+  AUTO
+  MANUAL
+}
