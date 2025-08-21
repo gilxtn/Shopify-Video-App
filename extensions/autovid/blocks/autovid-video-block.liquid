@@ -1,4 +1,11 @@
 {% assign raw_youtube_url = block.settings.product.metafields.custom.youtube_demo_video.value %}
+{% if request.design_mode %}
+  {% if raw_youtube_url == blank or raw_youtube_url == nil %}
+    <p>This is an example mock video. To view your real video on display, open your product page and ensure a relevant video was added via AutoVid dashboard.</p>
+    {% assign raw_youtube_url = "https://youtube.com/embed/x7FUb4DmSmc" %}
+  {% endif %}
+{% endif %}
+
 {% assign youtube_video_url = raw_youtube_url | replace: "https://youtube.com", "https://www.youtube.com" %}
 
 {% assign youtube_summary = block.settings.product.metafields.custom.youtube_demo_summary.value %}
@@ -17,7 +24,7 @@
 {% elsif block.settings.alignment == 'right' %}
   {% assign alignment_style = 'margin-left: auto;' %}
 {% endif %}
-{% if youtube_video_url %}
+{% if youtube_video_url and youtube_video_url contains "youtube.com" %}
   <div id="autovid--video-block" style="padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px; background-color: {{ block.settings.background }};">
    <div class="block-container-width page-width" id="autovid--video-block-container" >
     <div id="autovid--video-container"
@@ -38,7 +45,8 @@
     </div>
   </div>
 {% endif %}
-  <script src="https://www.youtube.com/iframe_api"></script>
+
+<script src="https://www.youtube.com/iframe_api"></script>
  <script>
   let player;
   function onYouTubeIframeAPIReady() {
@@ -141,7 +149,7 @@
       "type": "checkbox",
       "id": "show_summary",
       "label": "Show YouTube Summary",
-      "default": true
+      "default": false
     },
     {
       "type": "color",
