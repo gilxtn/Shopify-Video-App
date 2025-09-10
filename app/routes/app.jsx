@@ -3,26 +3,40 @@ import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu, useAppBridge } from "@shopify/app-bridge-react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
-import { authenticate, MONTHLY_PLAN } from "../shopify.server";
+import { authenticate } from "../shopify.server";
 import { useEffect, useState } from "react";
 import { Layout, Page, Spinner } from "@shopify/polaris";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 export const loader = async ({ request }) => {
 
-  const { admin, billing, redirect, session  } = await authenticate.admin(request);
 
-  const check = await billing.require({
-    plans: [MONTHLY_PLAN],
-    isTest: true,
-    onFailure: async () => {
-      await billing.request({
-        plan: MONTHLY_PLAN,
-        isTest: true,
-        returnUrl: `https://${session.shop}/admin/apps/${process.env.SHOPIFY_API_KEY}/billing?shop=${session.shop}`,
-      });
-    },
-  });
+
+   const { admin, redirect, session  } = await authenticate.admin(request);
+
+  // Check for active subscription using managed pricing
+  const subscriptionResponse = await admin.graphql(`
+    query {
+      currentAppInstallation {
+        activeSubscriptions {
+          id
+          name
+          status
+        }
+      }
+    }
+  `);
+  
+  const subscriptionResult = await subscriptionResponse.json();
+  const activeSubscriptions = subscriptionResult?.data?.currentAppInstallation?.activeSubscriptions || [];
+  const hasActiveSubscription = activeSubscriptions.length > 0 && 
+    activeSubscriptions.some(sub => sub.status === "ACTIVE");
+
+  // If no active subscription, redirect to Shopify's managed pricing page
+  if (!hasActiveSubscription) {
+    const planSelectionUrl = `https://admin.shopify.com/store/${session.shop}/charges/${process.env.SHOPIFY_API_KEY}/pricing_plans`;
+    return redirect(planSelectionUrl);
+  }
 
   const response = await admin.graphql(`
     query {
