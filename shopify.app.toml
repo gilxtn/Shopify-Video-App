@@ -3,12 +3,11 @@
 client_id = "95945448651144efcc9eb85647ef4f88"
 name = "AutoVid"
 handle = "autovid"
-application_url = "https://lite-oxford-atom-promised.trycloudflare.com"
+application_url = "https://app.autovidapp.com"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-include_config_on_deploy = true
 
 [webhooks]
 api_version = "2025-04"
@@ -19,13 +18,13 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://lite-oxford-atom-promised.trycloudflare.com/auth/callback",
-  "https://lite-oxford-atom-promised.trycloudflare.com/auth/shopify/callback",
-  "https://lite-oxford-atom-promised.trycloudflare.com/api/auth/callback"
+  "https://app.autovidapp.com/auth/callback",
+  "https://app.autovidapp.com/auth/shopify/callback",
+  "https://app.autovidapp.com/api/auth/callback"
 ]
 
 [app_proxy]
-url = "https://lite-oxford-atom-promised.trycloudflare.com/api"
+url = "https://app.autovidapp.com/api"
 subpath = "autovid"
 prefix = "a"
 
