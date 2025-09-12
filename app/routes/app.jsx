@@ -9,10 +9,7 @@ import { Layout, Page, Spinner } from "@shopify/polaris";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 export const loader = async ({ request }) => {
-
-
-
-   const { admin, redirect, session  } = await authenticate.admin(request);
+  const { admin, redirect, session  } = await authenticate.admin(request);
 
   // Check for active subscription using managed pricing
   const subscriptionResponse = await admin.graphql(`
@@ -32,11 +29,7 @@ export const loader = async ({ request }) => {
   const hasActiveSubscription = activeSubscriptions.length > 0 && 
     activeSubscriptions.some(sub => sub.status === "ACTIVE");
 
-  // If no active subscription, redirect to Shopify's managed pricing page
-  if (!hasActiveSubscription) {
-    const planSelectionUrl = `https://admin.shopify.com/store/${session.shop}/charges/${process.env.SHOPIFY_API_KEY}/pricing_plans`;
-    return redirect(planSelectionUrl);
-  }
+  
 
   const response = await admin.graphql(`
     query {
@@ -59,6 +52,8 @@ export const loader = async ({ request }) => {
     (field) => field.node.namespace === "Auto-Video" && field.node.key === "app_onboarding"
   );
   const onboardingComplete = onboardingMetafield?.node?.value === "true";
+   
+ 
   // const url = new URL(request.url);
   // const currentPath = url.pathname;
   // console.log(currentPath,"currentPath---")
@@ -68,12 +63,12 @@ export const loader = async ({ request }) => {
   //   // return redirect("/welcome");
   // }
 
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" , onboardingComplete : onboardingComplete }
+  return { apiKey: process.env.SHOPIFY_API_KEY || "" , onboardingComplete : onboardingComplete,hasActiveSubscription }
 };
 
 
 export default function App() {
-  const { apiKey , onboardingComplete} = useLoaderData();
+  const { apiKey , onboardingComplete,hasActiveSubscription} = useLoaderData();
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading";
   const shopify = useAppBridge();
@@ -90,13 +85,13 @@ export default function App() {
     <AppProvider isEmbeddedApp apiKey={apiKey}>
       <NavMenu>
           <Link to="/app" rel="home">Home</Link>
-          {onboardingComplete && 
-            <>
-            <Link to="/app/analytics">Analytics</Link>
-            <Link to="/app/account">Account</Link>
-            <Link to="/app/welcome">Getting Started</Link>
-            </>
-          }
+          <Link to="/app/welcome">Getting Started</Link>
+          {onboardingComplete && hasActiveSubscription && (
+  <>
+    <Link to="/app/analytics">Analytics</Link>
+    <Link to="/app/account">Account</Link>
+  </>
+)}
       </NavMenu>
       {isLoading && 
         <Page>

@@ -1,4 +1,4 @@
-import { Card, Page ,Layout , Text, Box, InlineGrid, BlockStack, Icon, Badge, ProgressBar, InlineStack } from "@shopify/polaris";
+import { Card, Page ,Layout , Text, Box, InlineGrid, BlockStack,Banner , Icon, Badge, ProgressBar, InlineStack, Link, Button } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { useLoaderData } from "@remix-run/react";
 import { useAppBridge } from "@shopify/app-bridge-react";
@@ -9,7 +9,7 @@ import {
 
 export const loader = async ({ request }) => {
   const { admin, session, redirect } = await authenticate.admin(request);
-
+const shopDomain = session.shop;
   const subscriptionQuery = `
     query {
       currentAppInstallation {
@@ -43,8 +43,7 @@ export const loader = async ({ request }) => {
   const billingRes = await admin.graphql(subscriptionQuery);
   const { data: billingData } = await billingRes.json();
   const activeSubscriptions = billingData?.currentAppInstallation?.activeSubscriptions || [];
-  console.log(activeSubscriptions,"activeSubscriptions---")
-
+  const hasActiveSubscription = activeSubscriptions.length > 0 && activeSubscriptions.some(sub => sub.status === "ACTIVE");
   const currentSubscription = activeSubscriptions[0];
   const currentPlan = currentSubscription?.name || "Trial";
   const status = currentSubscription?.status;
@@ -99,22 +98,26 @@ export const loader = async ({ request }) => {
   }
 
   return { count, currentPlan, status, interval, price, createdAt,
-     nextBillingDate, isTest, trialDays, trialDaysLeft, trialUsed,
+     nextBillingDate, isTest, trialDays, trialDaysLeft, trialUsed,hasActiveSubscription,shopDomain
   };
 }
 
-export const action = async ({ request }) => {
-    const { admin, session, redirect } = await authenticate.admin(request);
-    return null
-}
+
 
 export default function Account (){
  const { count, currentPlan, status, interval, price, createdAt, nextBillingDate, 
-  isTest, trialDays, trialDaysLeft, trialUsed} = useLoaderData();
+  isTest, trialDays, trialDaysLeft, trialUsed,hasActiveSubscription,shopDomain} = useLoaderData();
  const shopify = useAppBridge();
-        
+    const handleBuyPlan = () => {
+      if (shopDomain) {
+      const shopName = shopDomain.replace(".myshopify.com", "");
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`
+    }
+}
+    
   return (
-  <Page title="Account">
+ hasActiveSubscription?(
+<Page title="Account">
   <Layout>
     <Layout.Section>
       <InlineGrid columns={{ sm: "1fr", md: "1fr 1fr" , lg:"5fr 3fr"}} alignItems="start" gap="400">
@@ -136,8 +139,18 @@ export default function Account (){
             <Text>Plan: <strong>{currentPlan}</strong></Text>
             <Text>Billing Interval: <strong>{interval}</strong></Text>
             <Text>Price: <strong>{price.amount} {price.currencyCode}</strong></Text>
-            <Text>Started On: <strong>{new Date(createdAt).toLocaleDateString()}</strong></Text>
-            <Text>Next Billing Date: <strong>{new Date(nextBillingDate).toLocaleDateString()}</strong></Text>         
+            <Text>Started On: <strong>{new Date(createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+              })}</strong></Text>
+            <Text>Next Billing Date: <strong>{new Date(nextBillingDate).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+              })}
+              </strong></Text>   
+            <Button size="slim" onClick={()=>handleBuyPlan()} >Change Plan</Button>
           </BlockStack>
         </Card>
     </InlineGrid>
@@ -146,4 +159,19 @@ export default function Account (){
       </Layout.Section>
   </Layout>
   </Page>
+    ):(
+      <Page title="Subscription Required">
+    <Banner
+      title="No active subscription found"
+      status="critical"
+      action={{
+    content: "Buy Plan",
+    onAction: handleBuyPlan
+  }}
+    >
+      <p>You must complete your subscription to use this app.</p>
+    </Banner>
+  </Page>
+    )
+  
 )}

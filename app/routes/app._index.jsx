@@ -40,6 +40,35 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }) => {
   const { admin, session, redirect } = await authenticate.admin(request);
   const shopDomain = session.shop;
+   const queryParams = new URLSearchParams(request.url.split("?")[1]);
+
+  const chargeId = queryParams.get("charge_id");
+   const checkAppPlan = await admin.graphql(`
+    query {
+      currentAppInstallation {
+        allSubscriptions(first: 10, reverse: true) {
+          nodes {
+            id
+            status
+            name
+            test
+          }
+        }
+      }
+    }
+  `);
+  const data = await checkAppPlan.json();
+  const subscriptions = data.data.currentAppInstallation.allSubscriptions;
+
+  let findCharge = null;
+  if (chargeId) {
+  // If charge_id is present in URL
+  findCharge = subscriptions.nodes.find(sub => sub.id.includes(chargeId));
+} else {
+  // If no charge_id is present, fallback to any ACTIVE plan
+  findCharge = subscriptions.nodes.find(sub => sub.status === "ACTIVE");
+}
+ 
   const response = await admin.graphql(`
     query {
       currentAppInstallation {
@@ -102,7 +131,7 @@ export const loader = async ({ request }) => {
   const { tags, categories } = await fetchTagsAndCategories();
 
   return new Response(
-    JSON.stringify({ tags, categories, onboardingComplete , shopDomain}),
+    JSON.stringify({ tags, categories, onboardingComplete , shopDomain, findCharge}),
     {
       headers: { "Content-Type": "application/json" },
     },
@@ -111,7 +140,7 @@ export const loader = async ({ request }) => {
 
 export default function ProductTable() {
   const fetcher = useFetcher();
-  const { tags, categories, onboardingComplete , shopDomain} = useLoaderData();
+  const { tags, categories, onboardingComplete , shopDomain, findCharge} = useLoaderData();
   const [products, setProducts] = useState([]);
   const [pageInfo, setPageInfo] = useState({ hasNextPage: false });
   const [lastCursor, setLastCursor] = useState(null);
@@ -572,11 +601,32 @@ export default function ProductTable() {
   const [appliedVideoLink, setAppliedVideoLink] = useState(null);
   const [isApplied, setIsApplied] = useState(false);
 
-
+const handleBuyPlan = () => {
+   console.log(shopDomain, "shopDomain");
+       if (shopDomain) {
+      const shopName = shopDomain.replace(".myshopify.com", "");
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`
+    }
+}
   return (
     <>
-      {pageShow ? (
-        <Page title="Product Table with YouTube URLs" fullWidth>
+    {!findCharge && pageShow? (
+ <Page title="Subscription Required">
+    <Banner
+      title="No active subscription found"
+      status="critical"
+      action={{
+    content: "Buy Plan",
+    onAction: handleBuyPlan
+  }}
+    >
+      <p>You must complete your subscription to use this app.</p>
+    </Banner>
+  </Page>
+
+    ):(
+    pageShow && (
+<Page title="Product Table with YouTube URLs" fullWidth>
           <Layout>
             <Layout.Section>
               <Card padding="0">
@@ -1036,7 +1086,9 @@ export default function ProductTable() {
             </Page>
           </Modal>
         </Page>
-      ) : null}
+    )
+    )}
+   
     </>
   );
 }
