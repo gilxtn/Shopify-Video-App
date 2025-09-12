@@ -34,6 +34,11 @@ export const loader = async ({ request }) => {
           }
         }
       }
+      activeSubscriptions {
+          id
+          name
+          status
+      }
     }
   }`);
     
@@ -44,7 +49,17 @@ export const loader = async ({ request }) => {
 
   const onboardingMetafield = currentMetafields?.find((field) => field.node.namespace === "Auto-Video" && field.node.key === "app_onboarding");
   const onboardingValue = onboardingMetafield?.node?.value === "true";
-  return onboardingValue;
+  const activeSubs =
+    result?.data?.currentAppInstallation?.activeSubscriptions || [];
+  const hasActiveSubscription = activeSubs.some(
+    (sub) => sub.status === "ACTIVE"
+  );
+
+  return {
+    onboardingValue,
+    hasActiveSubscription,
+    shopDomain: session.shop,
+  };
 }
 
 export const action = async ({ request }) => {
@@ -115,13 +130,19 @@ export default function WelcomePage() {
   const [loadingBtn , setLoadingBtn] = useState(false);
   const fetcher = useFetcher();
   const navigate = useNavigate();
-  const onBoardingCompleted = useLoaderData();
+  const { onboardingValue, hasActiveSubscription, shopDomain } = useLoaderData();
+  console.log("onboardingValue", onboardingValue);
   // const isLoading = ["loading", "submitting"].includes(fetcher.state) && fetcher.formMethod === "POST";
 
   const getStarted = ()=>{
     setLoadingBtn(true);
     console.log("get started clicked")
-    fetcher.submit({}, { method: "POST" })
+    if (!hasActiveSubscription && shopDomain) {
+      const shopName = shopDomain.replace(".myshopify.com", "");
+      window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`;
+      return;
+    }
+    fetcher.submit({}, { method: "POST" });
   }
 
   useEffect(() => {
@@ -230,11 +251,11 @@ export default function WelcomePage() {
       <Layout.Section>
         <InlineStack align="center">
           <Button size="large" variant="primary" 
-          loading={loadingBtn}
-          onClick={()=>{
-            getStarted();
-          }}>
-            Let’s Get Started →
+            loading={loadingBtn}
+            onClick={()=>{
+              getStarted();
+            }}>
+            {onboardingValue? "Go to Dashboard →":"Let’s Get Started →"}
           </Button>
         </InlineStack>
       </Layout.Section>

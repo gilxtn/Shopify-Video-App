@@ -25,7 +25,25 @@ import prisma from "../db.server";
 import { useState } from "react";
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin ,session } = await authenticate.admin(request);
+  const shopDomain = session.shop;
+  const subscriptionResponse = await admin.graphql(`
+    query {
+      currentAppInstallation {
+        activeSubscriptions {
+          id
+          name
+          status
+        }
+      }
+    }
+  `);
+  
+  const subscriptionResult = await subscriptionResponse.json();
+  const activeSubscriptions = subscriptionResult?.data?.currentAppInstallation?.activeSubscriptions || [];
+  const hasActiveSubscription = activeSubscriptions.length > 0 && 
+    activeSubscriptions.some(sub => sub.status === "ACTIVE");
+
 
   let count = 0;
   let hasNextPage = true;
@@ -115,11 +133,11 @@ export const loader = async ({ request }) => {
     }
   }
 
-  return { count, products };
+  return { count, products,hasActiveSubscription,shopDomain };
 };
 
 export default function Analytics() {
-  const { count, products } = useLoaderData();
+  const { count, products,hasActiveSubscription,shopDomain } = useLoaderData();
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 3;
@@ -130,9 +148,16 @@ export default function Analytics() {
     currentPage * pageSize,
   );
   const totalPages = Math.ceil(products.length / pageSize);
-
+const handleBuyPlan = () => {
+   
+       if (shopDomain) {
+      const shopName = shopDomain.replace(".myshopify.com", "");
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`
+    }
+}
   return (
-    <Page title="Analytics">
+    hasActiveSubscription?(
+<Page title="Analytics">
       <Layout>
         <Layout.Section>
           <InlineGrid
@@ -239,5 +264,22 @@ export default function Analytics() {
         </Layout.Section>
       </Layout>
     </Page>
+    ):(
+<>
+ <Page title="Subscription Required">
+    <Banner
+      title="No active subscription found"
+      status="critical"
+      action={{
+    content: "Buy Plan",
+    onAction: handleBuyPlan
+  }}
+    >
+      <p>You must complete your subscription to use this app.</p>
+    </Banner>
+  </Page>
+</>
+    )
+    
   );
 }
