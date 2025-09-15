@@ -137,18 +137,20 @@ export default function WelcomePage() {
   const getStarted = ()=>{
     setLoadingBtn(true);
     console.log("get started clicked")
-    if (!hasActiveSubscription && shopDomain) {
-      const shopName = shopDomain.replace(".myshopify.com", "");
-      window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`;
-      return;
-    }
+   
     fetcher.submit({}, { method: "POST" });
   }
 
   useEffect(() => {
     if (fetcher.data?.success) {
       shopify.loading(true);
-      navigate("/app");
+       if (!hasActiveSubscription && shopDomain) {
+          const shopName = shopDomain.replace(".myshopify.com", "");
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`;
+          return;
+        }else{
+          navigate("/app");
+        }     
     }
   }, [fetcher.data]);
 
@@ -181,7 +183,7 @@ export default function WelcomePage() {
 
               <BlockStack align="center" gap="200">
                 <Box padding="200">
-                  <svg style={{display:"block", margin:"5px auto 10px auto"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#5C6AC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg style={{display:"block", margin:"5px auto 10px auto"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#5C6AC4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="10" cy="10" r="7"></circle>
                   <line x1="15" y1="15" x2="21" y2="21"></line>
                   <polygon points="9 8 11.5 10 9 12" fill="#fff"></polygon>
@@ -196,7 +198,7 @@ export default function WelcomePage() {
 
               <BlockStack align="center" gap="200">
                 <Box padding="200">
-                <svg style={{display:"block", margin:"5px auto 10px auto"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#008060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg style={{display:"block", margin:"5px auto 10px auto"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#008060" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3"></circle>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.17a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .66.39 1.26 1 1.51H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
@@ -209,7 +211,7 @@ export default function WelcomePage() {
 
               <BlockStack align="center" gap="200">
                 <Box padding="200">
-                  <svg style={{display:"block", margin:"5px auto 10px auto"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E6683C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg style={{display:"block", margin:"5px auto 10px auto"}} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E6683C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                   <path d="M9 12l2 2 4-4"></path>
                 </svg>

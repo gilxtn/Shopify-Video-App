@@ -87,11 +87,11 @@ export default function App() {
           <Link to="/app" rel="home">Home</Link>
           <Link to="/app/welcome">Getting Started</Link>
           {onboardingComplete && hasActiveSubscription && (
-  <>
-    <Link to="/app/analytics">Analytics</Link>
-    <Link to="/app/account">Account</Link>
-  </>
-)}
+      <>
+        <Link to="/app/analytics">Analytics</Link>
+        <Link to="/app/account">Account</Link>
+      </>
+    )}
       </NavMenu>
       {isLoading && 
         <Page>
