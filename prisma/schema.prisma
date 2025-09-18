@@ -36,14 +36,16 @@ model VideoPlayCount {
 
 model ProductExtendedInfo {
   id            Int          @id @default(autoincrement())
-  productId     BigInt       @unique
+  productId     BigInt       
   shop          String
   productTitle  String
   videoUrl      String
-  aiSummary     String
-  highlights    String
+  aiSummary     String?
+  highlights    String?
   source_method SourceMethod
   createdAt     DateTime     @default(now())
+  isMain        Boolean      @default(false)
+  @@unique([productId, shop, videoUrl]) 
 }
 
 enum SourceMethod {

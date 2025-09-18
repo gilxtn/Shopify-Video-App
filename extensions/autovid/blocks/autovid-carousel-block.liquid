@@ -1,0 +1,192 @@
+{% assign raw_youtube_urls_string = block.settings.product.metafields.custom.youtube_videos_list.value %}
+{% assign youtube_urls = raw_youtube_urls_string | parse_json %}
+
+<style>
+
+</style>
+
+{% if youtube_urls == nil or youtube_urls == empty %}
+  <p>No YouTube videos found.</p>
+{% else %}
+  {% assign show_count = block.settings.show_count | default: youtube_urls.size %}
+  {% assign youtube_urls_to_show = youtube_urls | slice: 0, show_count %}
+<div id="autovid-carousel-block"  style="padding-top: {{ block.settings.padding_top | default: 30 }}px; padding-bottom: {{ block.settings.padding_bottom | default: 30 }}px;" >
+  <div class="autovid-slick-carousel" style="max-width: {{ block.settings.max_width | default: '1200px' }}; margin: 0 auto;">
+    {% for youtube_video_url in youtube_urls_to_show %}
+      {% assign youtube_video_url = youtube_video_url | replace: "https://youtube.com", "https://www.youtube.com" %}
+      <div class="autovid-slide" style="padding-right: {{ block.settings.slide_gap | default: 10 }}px;">
+        <div style="position:relative;">
+          <iframe
+            id="youtube-player-{{ block.settings.product.id }}-{{ forloop.index }}"
+            src="{{ youtube_video_url }}{% if youtube_video_url contains '?' %}&enablejsapi=1{% else %}?enablejsapi=1{% endif %}"
+            width="100%"
+            height="{{ block.settings.video_height }}"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
+
+  <script>
+    $(document).ready(function(){
+      $('.autovid-slick-carousel').slick({
+        slidesToShow: {{ block.settings.slides_to_show | default: 1 }},
+        slidesToScroll: 1,
+        arrows: {{ block.settings.show_arrows | default: true }},
+        dots: {{ block.settings.show_dots | default: true }},
+        infinite: false,
+        autoplay: {{ block.settings.autoplay | default: false }},
+        autoplaySpeed: {{ block.settings.autoplay_speed | default: 3000 }},
+        adaptiveHeight: true,
+        responsive: [
+          { breakpoint: 1024, settings: { slidesToShow: {{ block.settings.slides_to_show | default: 1 }} } },
+          { breakpoint: 600, settings: { slidesToShow: 1 } },
+          { breakpoint: 480, settings: { slidesToShow: 1 } }
+        ]
+      });
+    });
+  </script>
+
+{%- comment -%}
+  <script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  var players = [];
+
+  function onYouTubeIframeAPIReady() {
+    {% for youtube_video_url in youtube_urls_to_show %}
+    {
+      console.log("hiiii);
+      var playerId = 'youtube-player-{{ block.settings.product.id }}-{{ forloop.index }}';
+      if (document.getElementById(playerId)) {
+        players.push(new YT.Player(playerId, {
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        }));
+      }
+    }
+    {% endfor %}
+  }
+
+  function onPlayerReady(event) {
+    console.log('Player ready:', event.target.getIframe().id);
+  }
+
+  function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.PLAYING) {
+      console.log('Video playing:', event.target.getIframe().id);
+    } else if (event.data === YT.PlayerState.PAUSED) {
+      console.log('Video paused:', event.target.getIframe().id);
+    }
+  }
+</script>
+{%- endcomment -%}
+ 
+
+
+{% endif %}
+
+{% schema %}
+{
+  "name": "AutoVid Video Carousel",
+  "target": "section",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "autofill": true
+    },
+    {
+      "type": "number",
+      "id": "show_count",
+      "label": "Number of videos to display",
+      "default": 3
+    },
+    {
+      "type": "number",
+      "id": "slides_to_show",
+      "label": "Slides to show at once",
+      "default": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "show_arrows",
+      "label": "Show navigation arrows",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dots",
+      "label": "Show pagination dots",
+      "default": true
+    },
+     { 
+        "type": "number", 
+        "id": "slide_gap", 
+        "label": "Gap between slides (px)", 
+        "default": 10 
+    },
+    {
+      "type": "checkbox",
+      "id": "autoplay",
+      "label": "Autoplay carousel",
+      "default": false
+    },
+    {
+      "type": "number",
+      "id": "autoplay_speed",
+      "label": "Autoplay speed (ms)",
+      "default": 3000
+    },
+    {
+    "type": "text", 
+    "id": "max_width", 
+    "label": "Maximum carousel width (px or %)", 
+    "default": "1200px"
+    },
+   {
+    "type": "range",
+    "id": "video_height",
+    "label": "YouTube Video Height (px)",
+    "min": 250,
+    "max": 800,
+    "step": 50,
+    "unit": "px",
+    "default": 350
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding (px)",
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding (px)",
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "default": 30
+    }
+  ]
+}
+{% endschema %}

@@ -16,10 +16,9 @@ export const action = async ({ request }) => {
     const test_apiUrl = `https://gileck.app.n8n.cloud/webhook-test/get-products?${params.toString()}`;
     const apiUrl = `https://gileck.app.n8n.cloud/webhook/get-products?${params.toString()}`;
     // const test2 = `https://gileck.app.n8n.cloud/webhook/get-products2?${params.toString()}`;
-    // const test2_live = `https://gileck.app.n8n.cloud/webhook/get-products?${params.toString()}`;
-    const test2_live = `https://gileck.app.n8n.cloud/webhook-test/get-products2?${params.toString()}`;
+    const changedApiUrl = `https://gileck.app.n8n.cloud/webhook-test/get-products-test01?${params.toString()}`;
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(changedApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -32,7 +31,7 @@ export const action = async ({ request }) => {
     });
 
     const data = await response.json();
-    console.log(data, "data--youtube----");
+    console.log(data, "data------");
     if (!response.ok || data?.code === 404) {
       throw new Response(
         JSON.stringify({
@@ -62,6 +61,17 @@ export const action = async ({ request }) => {
         const highlights = item.data.metafieldsSet.metafields.find(
           (field) => field.key === "youtube_demo_highlights",
         );
+        const otherVideosField = item.data.metafieldsSet.metafields.find(
+          (field) => field.key === "youtube_videos_list",
+        );
+        let otherVideos = [];
+        if (otherVideosField?.value) {
+          try {
+            otherVideos = JSON.parse(otherVideosField.value);
+          } catch (e) {
+            console.error("Failed to parse otherVideos", e);
+          }
+        }
         item;
         const productId = item.data.productUpdate?.product?.id.split("/").pop();
         const productInfo = {
@@ -73,19 +83,106 @@ export const action = async ({ request }) => {
           aiSummary: aiSummary?.value,
           highlights: highlights?.value,
         };
+
         updateProducts.push(productInfo);
-        await prisma.ProductExtendedInfo.upsert({
-          where: { productId: productInfo.productId },
-          update: {
-            productTitle: productInfo.productTitle,
-            videoUrl: productInfo.videoUrl,
-            source_method: productInfo.source_method,
-            aiSummary: productInfo.aiSummary,
-            highlights: productInfo.highlights,
-            shop: productInfo.shop,
+        // 1. Delete all old videos for this product + shop
+        await prisma.productExtendedInfo.deleteMany({
+          where: {
+            productId: BigInt(productId),
+            shop,
           },
-          create: productInfo,
         });
+
+        // 2. Insert main video (true) from youtube_demo_video metafield
+        await prisma.productExtendedInfo.create({
+          data: {
+            shop,
+            productId: BigInt(productId),
+            productTitle: item.data.productUpdate?.product?.title,
+            videoUrl: videoUrl?.value,
+            aiSummary: aiSummary?.value,
+            highlights: highlights?.value,
+            source_method: "AUTO",
+            isMain: true,
+          },
+        });
+
+        // 3. Insert other videos (false) from youtube_videos_list metafield
+        for (const ov of otherVideos) {
+          await prisma.productExtendedInfo.create({
+            data: {
+              shop,
+              productId: BigInt(productId),
+              productTitle: item.data.productUpdate?.product?.title,
+              videoUrl: ov,
+              source_method: "AUTO",
+              isMain: false,
+            },
+          });
+        }
+
+        // await prisma.productExtendedInfo.updateMany({
+        //   where: {
+        //     productId: BigInt(productId),
+        //     shop,
+        //   },
+        //   data: { isMain: false },
+        // });
+
+
+        // await prisma.productExtendedInfo.upsert({
+        //   where: {
+        //     productId_shop_videoUrl: {
+        //       productId: BigInt(productId),
+        //       shop,
+        //       videoUrl: videoUrl?.value,
+        //     },
+        //   },
+        //   update: {
+        //     productTitle: item.data.productUpdate?.product?.title,
+        //     aiSummary: aiSummary?.value,
+        //     highlights: highlights?.value,
+        //     source_method: "AUTO",
+        //     isMain: true,
+        //   },
+        //   create: {
+        //     shop,
+        //     productId: BigInt(productId),
+        //     productTitle: item.data.productUpdate?.product?.title,
+        //     videoUrl: videoUrl?.value,
+        //     aiSummary: aiSummary?.value,
+        //     highlights: highlights?.value,
+        //     source_method: "AUTO",
+        //     isMain: true,
+        //   },
+        // });
+
+        //  // save other videos (no summary/highlights, not main)
+        // for (const ov of otherVideos) {
+        //   await prisma.productExtendedInfo.upsert({
+        //     where: {
+        //       productId_shop_videoUrl: {
+        //         productId: BigInt(productId),
+        //         shop,
+        //         videoUrl: ov,
+        //       },
+        //     },
+        //     update: {
+        //       productTitle: item.data.productUpdate?.product?.title,
+        //       source_method: "AUTO",
+        //       isMain: false,
+        //     },
+        //     create: {
+        //       shop,
+        //       productId: BigInt(productId),
+        //       productTitle: item.data.productUpdate?.product?.title,
+        //       videoUrl: ov,
+        //       source_method: "AUTO",
+        //       isMain: false,
+        //     },
+        //   });
+        // }
+
       }
     });
 

@@ -1,11 +1,11 @@
 import { create } from "domain";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
+import { formatPrompt, youtubeSummaryPrompt } from "./utils/prompts";
 
 export const action = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   console.log(session, "session");
-
   const {
     productId,
     link,
@@ -14,10 +14,11 @@ export const action = async ({ request }) => {
     videoId,
     product_type,
     autoGenerateornot,
-    summary,
-    highlights,
   } = await request.json();
 
+  const normalizeUrl = (url) => {
+    return url.replace("www.", ""); 
+  };
   const validUrl = await fetch(
     `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
   );
@@ -36,8 +37,8 @@ export const action = async ({ request }) => {
       },
     );
   } else {
-    let finalSummary = summary;
-    let finalHighlights = highlights;
+    let finalSummary = "";
+    let finalHighlights = "";
     const output = await validUrl.json();
     if (output) {
       const url = `https://www.youtube.com/embed/${videoId}`;
@@ -49,12 +50,14 @@ export const action = async ({ request }) => {
           vendor,
           product_type,
         });
+
         const result = getsummary?.choices[0]?.message?.content;
+        console.log(result,"Result by Ai----------------")
         const summaryData = JSON.parse(result);
         finalSummary = summaryData?.summary;
         finalHighlights = JSON.stringify(summaryData?.highlights);
-        console.log("finalSummary", finalSummary);
-        console.log("finalHighlights", finalHighlights);
+        console.log("finalSummary By API", finalSummary);
+        console.log("finalHighlights By API", finalHighlights);
       } catch (err) {
         console.error("getVideoSummary failed", err.message);
         return new Response(
@@ -65,24 +68,14 @@ export const action = async ({ request }) => {
           { headers: { "Content-Type": "application/json" }, status: 500 },
         );
       }
-      // }
-      // const getsummary = await getVideoSummary({
-      //   youtube_url:link,
-      //   title: title,
-      //   vendor: vendor,
-      //   product_type: product_type,
-      // });
-      // const result = getsummary.choices[0].message.content;
-      // const summaryData = JSON.parse(result);
-      // const highlights = JSON.stringify(summaryData.highlights);
       try {
         const tagResponse = await admin.graphql(
           `#graphql
-        query GetProductTags($id: ID!) {
-          product(id: $id) {
-            tags
-          }
-        }`,
+          query GetProductTags($id: ID!) {
+            product(id: $id) {
+              tags
+            }
+          }`,
           {
             variables: { id: productId },
           },
@@ -132,7 +125,7 @@ export const action = async ({ request }) => {
                   {
                     namespace: "custom",
                     key: "youtube_demo_video",
-                    value: url,
+                    value: normalizeUrl(url),
                     type: "url",
                   },
                   {
@@ -174,28 +167,53 @@ export const action = async ({ request }) => {
             },
           );
         }
-        const updatedMetafields =
-          data?.data?.productUpdate?.product?.metafields?.edges || [];
-        await prisma.ProductExtendedInfo.upsert({
-          where: { productId: productId.split("/").pop() },
+        const updatedMetafields = data?.data?.productUpdate?.product?.metafields?.edges || [];
+
+        await prisma.productExtendedInfo.updateMany({
+          where: {
+            productId: BigInt(productId.split("/").pop()),
+            shop: session?.shop,
+            isMain: true,
+          },
+          data: { isMain: false },
+        });
+
+   
+
+        await prisma.productExtendedInfo.upsert({
+          where: {
+            productId_shop_videoUrl: {
+              productId: BigInt(productId.split("/").pop()),
+              shop: session?.shop,
+              videoUrl: normalizeUrl(url),
+            },
+          },
           update: {
             productTitle: title,
-            videoUrl: url,
             source_method: "MANUAL",
             aiSummary: finalSummary,
             highlights: finalHighlights,
-            shop: session?.shop,
+            isMain: true,
           },
           create: {
-            productId: productId.split("/").pop(),
+            productId: BigInt(productId.split("/").pop()),
             productTitle: title,
-            videoUrl: url,
+            videoUrl: normalizeUrl(url),
             source_method: "MANUAL",
             aiSummary: finalSummary,
             highlights: finalHighlights,
             shop: session?.shop,
+            isMain: true,
           },
         });
+
+        const allVideos = await prisma.productExtendedInfo.findMany({
+          where: { productId: BigInt(productId.split("/").pop()), shop: session?.shop },
+          select: { videoUrl: true },
+        });
+        const allVideoUrls = allVideos.map(v => v.videoUrl);
+        console.log("allVideoUrls", allVideoUrls);
+
         return new Response(
           JSON.stringify({ success: true, message: "Updated Successfully" }),
           {
@@ -216,21 +234,30 @@ export const action = async ({ request }) => {
   }
 
   async function getVideoSummary({ youtube_url, title, vendor, product_type }) {
-    const prompt = `
-  Summarize the YouTube video at this link: ${youtube_url}.
+  
+    const prompt = formatPrompt(youtubeSummaryPrompt, {
+        youtube_url,
+        title,
+        vendor,
+        product_type,
+      });
+    console.log("prompt=========", prompt);
 
-  This is a demo of the product "${title}" by "${vendor}", which is a ${product_type}.
-  Write a short, 2–3 sentence summary describing what the video shows about the product — sound, features, or comparisons. If there is no narration, describe the sound or visual style. Keep the tone as if we are talking to the shopper not in a very formal way.
-  Then, identify the 2–3 most helpful moments for a shopper and list their approximate timestamps with a short label. Format the full output like this:
-  {
-  "youtube_url": "${youtube_url}",
-  "summary": "Brief natural-language summary here.",
-  "highlights": [
-  { "label": "Clean tone demo", "timestamp": "1:22" },
-  { "label": "Pickup comparison", "timestamp": "3:10" }
-  ]
-  }
-    `.trim();
+    //   const prompt = `
+    // Summarize the YouTube video at this link: ${youtube_url}.
+
+    // This is a demo of the product "${title}" by "${vendor}", which is a ${product_type}.
+    // Write a short, 2–3 sentence summary describing what the video shows about the product — sound, features, or comparisons. If there is no narration, describe the sound or visual style. Keep the tone as if we are talking to the shopper not in a very formal way.
+    // Then, identify the 2–3 most helpful moments for a shopper and list their approximate timestamps with a short label. Format the full output like this:
+    // {
+    // "youtube_url": "${youtube_url}",
+    // "summary": "Brief natural-language summary here.",
+    // "highlights": [
+    // { "label": "Clean tone demo", "timestamp": "1:22" },
+    // { "label": "Pickup comparison", "timestamp": "3:10" }
+    // ]
+    // }
+    //   `.trim();
 
     const body = {
       model: "sonar-pro",
@@ -246,8 +273,7 @@ export const action = async ({ request }) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization:
-          "Bearer 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",
+        Authorization:`Bearer ${process.env.PERPLEXITY_API_KEY}`,
       },
       body: JSON.stringify(body),
     });

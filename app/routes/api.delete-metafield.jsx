@@ -1,4 +1,5 @@
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 export const action = async ({ request }) => {
   try {
@@ -48,6 +49,11 @@ export const action = async ({ request }) => {
               namespace: "custom",
               ownerId: productId,
             },
+            {
+              key: "youtube_videos_list", 
+              namespace: "custom",
+              ownerId: productId,
+            },
           ],
         },
       },
@@ -65,6 +71,15 @@ export const action = async ({ request }) => {
         },
       );
     }
+
+
+    // Delete all videos from database for this product/shop
+    await prisma.productExtendedInfo.deleteMany({
+      where: {
+        productId: BigInt(productId.split("/").pop()), // strip gid
+        shop: session.shop,
+      },
+    });
 
     // Update product tags
     const updateResponse = await admin.graphql(

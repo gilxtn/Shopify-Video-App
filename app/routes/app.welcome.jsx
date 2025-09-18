@@ -146,7 +146,7 @@ export default function WelcomePage() {
       shopify.loading(true);
        if (!hasActiveSubscription && shopDomain) {
           const shopName = shopDomain.replace(".myshopify.com", "");
-          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`;
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid-test/pricing_plans`;
           return;
         }else{
           navigate("/app");

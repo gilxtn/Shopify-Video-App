@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   useLoaderData,
   useFetcher,
-  redirect,
   useNavigate,
 } from "@remix-run/react";
 import {
@@ -62,12 +61,18 @@ export const loader = async ({ request }) => {
 
   let findCharge = null;
   if (chargeId) {
-  // If charge_id is present in URL
-  findCharge = subscriptions.nodes.find(sub => sub.id.includes(chargeId));
-} else {
-  // If no charge_id is present, fallback to any ACTIVE plan
-  findCharge = subscriptions.nodes.find(sub => sub.status === "ACTIVE");
-}
+      // If charge_id is present in URL
+      findCharge = subscriptions.nodes.find(sub => sub.id.includes(chargeId));
+  } else {
+    if(subscriptions.nodes.length === 0){
+        //If no plan exists 
+        findCharge = true;
+    }
+    else{
+      // If no charge_id is present, fallback to any ACTIVE plan
+      findCharge = subscriptions.nodes.find(sub => sub.status === "ACTIVE");
+    }
+  }
  
   const response = await admin.graphql(`
     query {
@@ -176,11 +181,17 @@ export default function ProductTable() {
   const [radioValue, setRadioValue] = useState(["auto"]);
   const handleEditType = useCallback((value) => setRadioValue(value), []);
   const shopify = useAppBridge();
-  const navigation = useNavigate();
+  const navigate = useNavigate();
   const handleFiltersQueryChange = useCallback(
     (value) => setQueryValue(value),
     [],
   );
+
+const navigateToSelect = (product_id)=>{
+   console.log(`will navigate to` + product_id);
+   shopify.loading(true);
+   navigate(`/app/product-video-carousel/${product_id.split("/").pop()}`);
+}
 
   const fetchProducts = (cursorValue = null, direction = "next") => {
     setIsProductLoading(true);
@@ -220,7 +231,7 @@ export default function ProductTable() {
     if (onboardingComplete) {
       setPageShow(true);
     } else {
-      navigation("/app/welcome");
+      navigate("/app/welcome");
     }
   }, [onboardingComplete]);
 
@@ -441,6 +452,143 @@ export default function ProductTable() {
       const data = await response.json();
       console.log(data, "data-----data frontend");
 
+// response example 
+// const newRes = {
+//     "success": true,
+//     "message": "All products updated successfully",
+//     "data": [
+//         {
+//             "data": {
+//                 "productUpdate": {
+//                     "product": {
+//                         "id": "gid://shopify/Product/9817987940645",
+//                         "title": "Enya Nova Go Acoustic",
+//                         "tags": [
+//                             "youtubevideo"
+//                         ]
+//                     },
+//                     "userErrors": []
+//                 },
+//                 "metafieldsSet": {
+//                     "metafields": [
+//                         {
+//                             "id": "gid://shopify/Metafield/64017908171045",
+//                             "namespace": "custom",
+//                             "key": "youtube_demo_video",
+//                             "value": "https://youtube.com/embed/JRSF6FHmxhI"
+//                         },
+//                         {
+//                             "id": "gid://shopify/Metafield/64017908203813",
+//                             "namespace": "custom",
+//                             "key": "youtube_demo_summary",
+//                             "value": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance."
+//                         },
+//                         {
+//                             "id": "gid://shopify/Metafield/73210663993637",
+//                             "namespace": "custom",
+//                             "key": "video_source",
+//                             "value": "AUTO"
+//                         },
+//                         {
+//                             "id": "gid://shopify/Metafield/64017908236581",
+//                             "namespace": "custom",
+//                             "key": "youtube_demo_highlights",
+//                             "value": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
+//                         }
+//                     ],
+//                     "userErrors": []
+//                 }
+//             },
+//             "extensions": {
+//                 "cost": {
+//                     "requestedQueryCost": 20,
+//                     "actualQueryCost": 20,
+//                     "throttleStatus": {
+//                         "maximumAvailable": 2000,
+//                         "currentlyAvailable": 1980,
+//                         "restoreRate": 100
+//                     }
+//                 }
+//             }
+//         },
+//         {
+//             "data": {
+//                 "productUpdate": {
+//                     "product": {
+//                         "id": "gid://shopify/Product/9817988006181",
+//                         "title": "Epiphone Thunderbird Bass",
+//                         "tags": [
+//                             "youtubevideo"
+//                         ]
+//                     },
+//                     "userErrors": []
+//                 },
+//                 "metafieldsSet": {
+//                     "metafields": [
+//                         {
+//                             "id": "gid://shopify/Metafield/63631010365733",
+//                             "namespace": "custom",
+//                             "key": "youtube_demo_video",
+//                             "value": "https://youtube.com/embed/b4Oq653XoYM"
+//                         },
+//                         {
+//                             "id": "gid://shopify/Metafield/63631010398501",
+//                             "namespace": "custom",
+//                             "key": "youtube_demo_summary",
+//                             "value": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair."
+//                         },
+//                         {
+//                             "id": "gid://shopify/Metafield/64913749082405",
+//                             "namespace": "custom",
+//                             "key": "video_source",
+//                             "value": "AUTO"
+//                         },
+//                         {
+//                             "id": "gid://shopify/Metafield/63631010431269",
+//                             "namespace": "custom",
+//                             "key": "youtube_demo_highlights",
+//                             "value": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
+//                         }
+//                     ],
+//                     "userErrors": []
+//                 }
+//             },
+//             "extensions": {
+//                 "cost": {
+//                     "requestedQueryCost": 20,
+//                     "actualQueryCost": 20,
+//                     "throttleStatus": {
+//                         "maximumAvailable": 2000,
+//                         "currentlyAvailable": 1980,
+//                         "restoreRate": 100
+//                     }
+//                 }
+//             }
+//         }
+//     ],
+//     "updateProducts": [
+//         {
+//             "shop": "workflow-dev1.myshopify.com",
+//             "productId": "9817987940645",
+//             "productTitle": "Enya Nova Go Acoustic",
+//             "videoUrl": "https://youtube.com/embed/JRSF6FHmxhI",
+//             "source_method": "AUTO",
+//             "aiSummary": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance.",
+//             "highlights": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
+//         },
+//         {
+//             "shop": "workflow-dev1.myshopify.com",
+//             "productId": "9817988006181",
+//             "productTitle": "Epiphone Thunderbird Bass",
+//             "videoUrl": "https://youtube.com/embed/b4Oq653XoYM",
+//             "source_method": "AUTO",
+//             "aiSummary": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair.",
+//             "highlights": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
+//         }
+//     ]
+// }
+
+
       if (response.status === 206) {
         console.log("partial success");
         const erroredProducts = data.erroredProducts
@@ -536,8 +684,8 @@ export default function ProductTable() {
           vendor: product.vendor,
           product_type: product.productType,
           autoGenerateornot: radioValue[0],
-          summary: editVideoSummary,
-          highlights: editVideoHighlights,
+          // summary: editVideoSummary,
+          // highlights: editVideoHighlights,
         }),
       });
       //  if (radioValue[0] === "manual") {
@@ -605,7 +753,7 @@ const handleBuyPlan = () => {
    console.log(shopDomain, "shopDomain");
        if (shopDomain) {
       const shopName = shopDomain.replace(".myshopify.com", "");
-          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid-test/pricing_plans`
     }
 }
   return (
@@ -704,7 +852,7 @@ const handleBuyPlan = () => {
                     { title: "Inventory" },
                     { title: "Type" },
                     { title: "Video Source" },
-                    { title: "Video Status" },
+                    // { title: "Video Status" },
                     // { title: "Category" },
                     { title: "Vendor" },
                     { title: "" }
@@ -806,21 +954,27 @@ const handleBuyPlan = () => {
                         </IndexTable.Cell>
                         <IndexTable.Cell>
                           {product?.metafield?.value && (
-                            <button
-                              onClick={() => {
-                                setModalDelete(product);
-                                shopify.modal.show("delete-modal");
-                              }}
-                              title="Delete Video"
-                              style={{
-                                border: "none",
-                                background: "transparent",
-                                cursor: "pointer",
-                                padding: 0,
-                              }}
-                            >
-                              <Icon source={DeleteIcon} />
-                            </button>
+                            <InlineStack gap="100" wrap={false}>
+                              <button
+                                onClick={() => {
+                                  setModalDelete(product);
+                                  shopify.modal.show("delete-modal");
+                                }}
+                                title="Delete Video"
+                                style={{
+                                  border: "none",
+                                  background: "transparent",
+                                  cursor: "pointer",
+                                  padding: 0,
+                                }}
+                              >
+                                <Icon source={DeleteIcon} />
+                              </button>
+                              <Button 
+                                onClick={(e)=>{ 
+                                  navigateToSelect(product.id);
+                                }}>Select Videos</Button>
+                           </InlineStack>
                           )}
                         </IndexTable.Cell>
                         <IndexTable.Cell>{inventoryStatus}</IndexTable.Cell>
@@ -828,9 +982,9 @@ const handleBuyPlan = () => {
                           {product?.productType}
                         </IndexTable.Cell>
                         <IndexTable.Cell>{videoSource}</IndexTable.Cell>
-                        <IndexTable.Cell>
+                        {/* <IndexTable.Cell>
                           <Badge size="small">{product?.tags}</Badge>
-                        </IndexTable.Cell>
+                        </IndexTable.Cell> */}
                         <IndexTable.Cell>{product?.vendor}</IndexTable.Cell>
                         <IndexTable.Cell >
                           <div className="preview-button-wrapper">
@@ -845,13 +999,15 @@ const handleBuyPlan = () => {
                               }
                             `}
                           </style>
-                          {product?.onlineStorePreviewUrl && (
-                            <Button 
-                              icon={ViewIcon}  
-                              onClick={(e) => { e.stopPropagation(); }}
-                              variant="tertiary" url={product.onlineStorePreviewUrl} target="_blank"
-                            />
-                          )}
+                          <InlineStack gap="200">  
+                            {product?.onlineStorePreviewUrl && (
+                              <Button 
+                                icon={ViewIcon}  
+                                onClick={(e) => { e.stopPropagation(); }}
+                                variant="tertiary" url={product.onlineStorePreviewUrl} target="_blank"
+                              />
+                            )}
+                           </InlineStack>
                         </div>
                         </IndexTable.Cell>
                       </IndexTable.Row>

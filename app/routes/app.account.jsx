@@ -111,7 +111,7 @@ export default function Account (){
     const handleBuyPlan = () => {
       if (shopDomain) {
       const shopName = shopDomain.replace(".myshopify.com", "");
-          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`
+          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid-test/pricing_plans`
     }
 }
     
