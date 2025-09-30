@@ -32,7 +32,7 @@ export const action = async ({ request }) => {
       },
     });
     console.log(result, "result");
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    return new Response(JSON.stringify({ success: true, playCount: result.playCount }), { status: 200 });
   } catch (error) {
     console.error("Error updating play count:", error);
     return new Response("Server error", { status: 500 });

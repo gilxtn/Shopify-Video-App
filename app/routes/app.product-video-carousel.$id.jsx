@@ -3,22 +3,9 @@ import { json } from "@remix-run/node";
 import { useFetcher, useLoaderData } from "@remix-run/react";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
-import {
-  Card,
-  Page,
-  Layout,
-  Text,
-  Box,
-  InlineGrid,
-  InlineStack,
-  Button,
-  Checkbox,
-  BlockStack,
-  Badge ,
-  Icon 
-} from "@shopify/polaris";
+import { Card, Page, Layout, Text, Box, InlineGrid, InlineStack, Button, Checkbox, BlockStack, Badge , Icon } from "@shopify/polaris";
 import {PlayCircleIcon} from '@shopify/polaris-icons';
-import {
+import { 
   Modal,
   TitleBar,
   useAppBridge,
@@ -106,8 +93,8 @@ export const loader = async ({ request, params }) => {
     {
       variables: {
         ownerId: `gid://shopify/Product/${numericProductId}`,
-        namespace: "custom",               // Replace with your actual namespace
-        key: "youtube_videos_list",        // Replace with your actual key
+        namespace: "custom",
+        key: "youtube_videos_list",
       },
     }
   );
@@ -126,7 +113,6 @@ export const loader = async ({ request, params }) => {
     }
   }
   console.log("savedVideoUrls-----:", savedVideoUrls);
-
   return json({ videos, productIdParam, productData , savedVideoUrls  });
 };
 
@@ -143,10 +129,20 @@ export const action = async ({ request }) => {
     return json({ success: false, error: "Missing productId" }, { status: 400 });
   }
 
+  const normalizeYoutubeUrl = (url) => {
+    if (!url) return url;
+    try {
+      return url.replace("https://www.youtube.com/", "https://youtube.com/");
+    } catch {
+      return url;
+    }
+  };
+
   // video carouel videos
   if (actionType === "saveSelection") {
     const selectedVideos = JSON.parse(formData.get("selectedVideos") || "[]");
     const value = JSON.stringify(selectedVideos);
+    console.log("Saving videos:", selectedVideos);
     const updateResponse = await admin.graphql(
       `#graphql
         mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
@@ -181,6 +177,7 @@ export const action = async ({ request }) => {
       },
     );
     const updateData = await updateResponse.json();
+    console.log("updateData save selection--------shows", updateData?.data?.metafieldsSet?.metafields);
     if (updateData.errors || updateData.data?.metafieldsSet?.userErrors?.length) {
       return json(
         {
@@ -195,7 +192,8 @@ export const action = async ({ request }) => {
 
   // SET MAIN VIDEO
   if (actionType === "setMainVideo") {
-    const mainVideoUrl = formData.get("mainVideoUrl");
+    const rawVideoUrl = formData.get("mainVideoUrl");
+    const mainVideoUrl = normalizeYoutubeUrl(rawVideoUrl);
     const numericProductId = (() => {
       try {
         return BigInt(productId);
@@ -222,25 +220,36 @@ export const action = async ({ request }) => {
 
    const productJson = await productResp.json();
    const prod = productJson?.data?.product || {};
+   console.log("prod", prod);
 
-   // 2. Call Perplexity API to get summary  highlights
-   let summary = null;
-   let highlights = null;
-   try {
-     const result = await getVideoSummary({
-       youtube_url: mainVideoUrl,
-       title: prod.title || "",
-       vendor: prod.vendor || "",
-       product_type: prod.productType || "",
-     });
+  // 2. Check DB for existing summary/highlights
+  let existing = await prisma.productExtendedInfo.findFirst({
+    where: { productId: numericProductId, shop, videoUrl: mainVideoUrl },
+    select: { aiSummary: true, highlights: true },
+  });
 
-     const content = result?.choices?.[0]?.message?.content || "{}";
-     const parsed = JSON.parse(content);
-     summary = parsed.summary || null;
-     highlights = parsed.highlights || null;
-   } catch (err) {
-     console.error("Failed to fetch video summary:", err);
-   }
+  let summary = existing?.aiSummary;
+  let highlights = existing?.highlights;
+
+   // 3. Call Perplexity API to get summary  highlights
+  if (!summary || !highlights) {
+    try {
+      const result = await getVideoSummary({
+        youtube_url: mainVideoUrl,
+        title: prod.title || "",
+        vendor: prod.vendor || "",
+        product_type: prod.productType || "",
+      });
+
+      const content = result?.choices?.[0]?.message?.content || "{}";
+      const parsed = JSON.parse(content);
+      summary = parsed.summary || null;
+      highlights = parsed.highlights || null;
+      console.log("got video summary----", summary, highlights);
+    } catch (err) {
+      console.error("Failed to fetch video summary:", err);
+    }
+  }
 
     const updateMainResponse = await admin.graphql(
       `#graphql
@@ -266,10 +275,22 @@ export const action = async ({ request }) => {
               namespace: "custom",
               key: "youtube_demo_video",
               type: "single_line_text_field",
-              ownerId: productId.startsWith("gid://")
-                ? productId
-                : `gid://shopify/Product/${productId}`,
+              ownerId: productId.startsWith("gid://") ? productId : `gid://shopify/Product/${productId}`,
               value: mainVideoUrl,
+            },
+            {
+              namespace: "custom",
+              key: "youtube_demo_summary",
+              type: "multi_line_text_field",
+              ownerId: productId.startsWith("gid://") ? productId : `gid://shopify/Product/${productId}`,
+              value: summary || "",
+            },
+            {
+              namespace: "custom",
+              key: "youtube_demo_highlights",
+              type: "json",
+              ownerId: productId.startsWith("gid://") ? productId : `gid://shopify/Product/${productId}`,
+              value: JSON.stringify(highlights || []),
             },
           ],
         },
@@ -285,7 +306,7 @@ export const action = async ({ request }) => {
       );
     }
 
-    // --- Update Database ---
+    // 5. Update DB main flag and summary
     await prisma.$transaction([
       prisma.productExtendedInfo.updateMany({
         where: { productId: numericProductId, shop },
@@ -293,10 +314,13 @@ export const action = async ({ request }) => {
       }),
       prisma.productExtendedInfo.updateMany({
         where: { productId: numericProductId, shop, videoUrl: mainVideoUrl },
-        data: { isMain: true },
+        data: {
+          isMain: true,
+          aiSummary: summary || "",
+          highlights: highlights ? JSON.stringify(highlights) : null, 
+        },
       }),
     ]);
-
     return json({ success: true, message: "Main video updated successfully." });
   }
 
@@ -321,7 +345,23 @@ export default function ProductVideoCarousel() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [activeVideo, setActiveVideo] = useState(null); 
- 
+
+  useEffect(() => {
+  if (fetcher.data?.success) {
+    if (currentAction === "setMainVideo") {
+        setConfirmModalOpen(false);
+        shopify.toast.show("Main video updated successfully!");
+      }
+      if (currentAction === "saveSelection") {
+        shopify.toast.show("Selection saved successfully!");
+      }
+      setCurrentAction(null);
+    }
+    if (fetcher.data?.error) {
+      shopify.toast.show(`Error: ${fetcher.data.error}`);
+    }
+  }, [fetcher.data]);
+
 
   const toggleSelect = (id) => {
     setSelectedVideos((prev) =>
@@ -366,7 +406,6 @@ export default function ProductVideoCarousel() {
       },
       { method: "POST" }
     );
-    setConfirmModalOpen(false);
   };
 
   return (
@@ -445,15 +484,6 @@ export default function ProductVideoCarousel() {
                         </Box>
                       )}
                     </InlineStack>
-                      {/* <InlineStack align="start" spacing="2">
-                        <iframe title={`video-${v.id}`} src={v.videoUrl} 
-                          style={{
-                            width: "100%",
-                            height: "170px",
-                            borderRadius: "8px",
-                          }} 
-                         allowFullScreen/>
-                      </InlineStack> */}
                       <InlineStack align="center" gap="300">
                         <Checkbox
                           checked={isSelected}
@@ -479,7 +509,7 @@ export default function ProductVideoCarousel() {
     PREVIEW MODAL
 ============================== */}
 {previewModalOpen && (
-  <Modal id="preview-modal" open={previewModalOpen} onHide={() => setPreviewModalOpen(false)} onShow={()=>{}}>
+  <Modal  id="preview-modal" open={previewModalOpen} onHide={() => setPreviewModalOpen(false)} onShow={()=>{}}>
     <TitleBar title="Video Preview">
       <button onClick={() => setPreviewModalOpen(false)}>Close</button>
     </TitleBar>

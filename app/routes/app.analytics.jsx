@@ -96,6 +96,10 @@ export const loader = async ({ request }) => {
     },
   });
 
+  const extendedInfos = await prisma.productExtendedInfo.findMany({
+    where: { shop: shopDomain },
+  });
+
   const products = [];
   for (const video of videoStats) {
     const gid = `gid://shopify/Product/${video.productId}`;
@@ -122,13 +126,31 @@ export const loader = async ({ request }) => {
     const product = json.data.product;
 
     if (product) {
+      const extended = extendedInfos.find(
+        (info) =>
+          info.productId === video.productId &&
+          info.videoUrl === video.videoUrl
+      );
+
+      // products.push({
+      //   id: video.productId.toString(),
+      //   title: product.title,
+      //   imageUrl: product.featuredMedia?.preview?.image?.url,
+      //   videoUrl: video.videoUrl,
+      //   playCount: video.playCount,
+      //   summary: product?.metafield?.value,
+      // });
       products.push({
         id: video.productId.toString(),
         title: product.title,
         imageUrl: product.featuredMedia?.preview?.image?.url,
         videoUrl: video.videoUrl,
         playCount: video.playCount,
-        summary: product?.metafield?.value,
+        summary: extended?.aiSummary || product?.metafield?.value,
+        highlights: extended?.highlights,
+        sourceMethod: extended?.source_method,
+        isMain: extended?.isMain,
+        createdAt: extended?.createdAt,
       });
     }
   }
@@ -140,7 +162,7 @@ export default function Analytics() {
   const { count, products,hasActiveSubscription,shopDomain } = useLoaderData();
 
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 3;
+  const pageSize = 10;
 
   const topProduct = products[0]; // First item in sorted array
   const paginatedProducts = products.slice(
@@ -157,7 +179,7 @@ const handleBuyPlan = () => {
 }
   return (
     hasActiveSubscription?(
-<Page title="Analytics">
+    <Page title="Analytics">
       <Layout>
         <Layout.Section>
           <InlineGrid
@@ -166,8 +188,8 @@ const handleBuyPlan = () => {
             alignItems="start"
           >
             <Card>
-              <Box background="bg-fill" padding="400">
-                <BlockStack gap="400">
+              <Box background="bg-fill" padding="300">
+                <BlockStack gap="300">
                   <Text variant="headingLg">Top Performing Video</Text>
                   {topProduct ? (
                     <BlockStack gap="200">
@@ -210,12 +232,11 @@ const handleBuyPlan = () => {
                 </BlockStack>
               </Box>
             </Card>
-
             <Card padding={300} shadow="300" background="bg-surface-info">
               <InlineGrid columns={"1fr auto"} alignItems="end">
                 <BlockStack gap="300">
                   <Text as="p" variant="bodyMd">
-                    Video Generation Count
+                    Products Count with YouTube Videos
                   </Text>
                   <Text as="h3" variant="heading2xl">
                     {count}
@@ -224,6 +245,30 @@ const handleBuyPlan = () => {
                 <Icon source={ChartLineIcon} tone="base" />
               </InlineGrid>
             </Card>
+            <Card>
+              <Box paddingBlockEnd="300">
+                <Text variant="headingMd" as="h2" padding={300}>Top 3 Videos</Text>
+              </Box>
+              <BlockStack gap="200">
+                {products.slice(0, 3).map((p, index) => (
+                  <InlineStack key={p.id} align="space-between" gap="200" blockAlign="center">
+                    <InlineStack gap="200">
+                    <Badge status="info">#{index + 1}</Badge>
+                      {p.imageUrl && <Thumbnail source={p.imageUrl} size="small" />}
+                      <Box>
+                        <Text variant="bodyMd" fontWeight="semibold">{index + 1}. {p.title}</Text>
+                        <Text variant="bodySm">Play Count: {p.playCount}</Text>
+                      </Box>
+                    </InlineStack>
+                     <a href={p.videoUrl} target="_blank" rel="noreferrer">
+                        View Video
+                     </a>
+                   
+                  </InlineStack>
+                ))}
+              </BlockStack>
+            </Card>
+
           </InlineGrid>
         </Layout.Section>
         <Layout.Section>

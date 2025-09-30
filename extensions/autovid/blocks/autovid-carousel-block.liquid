@@ -2,101 +2,161 @@
 {% assign youtube_urls = raw_youtube_urls_string | parse_json %}
 
 <style>
-
+  .autovid-slick-carousel .slick-track {
+    display: flex !important;
+    margin-right: -{{ block.settings.slide_gap | default: 10 }}px;
+  }
 </style>
 
 {% if youtube_urls == nil or youtube_urls == empty %}
   <p>No YouTube videos found.</p>
 {% else %}
-  {% assign show_count = block.settings.show_count | default: youtube_urls.size %}
+  {% assign show_count = youtube_urls.size %}
   {% assign youtube_urls_to_show = youtube_urls | slice: 0, show_count %}
-<div id="autovid-carousel-block"  style="padding-top: {{ block.settings.padding_top | default: 30 }}px; padding-bottom: {{ block.settings.padding_bottom | default: 30 }}px;" >
-  <div class="autovid-slick-carousel" style="max-width: {{ block.settings.max_width | default: '1200px' }}; margin: 0 auto;">
-    {% for youtube_video_url in youtube_urls_to_show %}
-      {% assign youtube_video_url = youtube_video_url | replace: "https://youtube.com", "https://www.youtube.com" %}
-      <div class="autovid-slide" style="padding-right: {{ block.settings.slide_gap | default: 10 }}px;">
-        <div style="position:relative;">
-          <iframe
-            id="youtube-player-{{ block.settings.product.id }}-{{ forloop.index }}"
-            src="{{ youtube_video_url }}{% if youtube_video_url contains '?' %}&enablejsapi=1{% else %}?enablejsapi=1{% endif %}"
-            width="100%"
-            height="{{ block.settings.video_height }}"
-            title="YouTube video player"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-</div>
 
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css"/>
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
+  <div id="autovid-carousel-block" style="padding-top: {{ block.settings.padding_top | default: 30 }}px; padding-bottom: {{ block.settings.padding_bottom | default: 30 }}px;">
+    <div class="autovid-slick-carousel">
+      {% for youtube_video_url in youtube_urls_to_show %}
+        {% assign youtube_video_url = youtube_video_url | replace: "https://youtube.com", "https://www.youtube.com" %}
+
+        {%- comment -%} Extract video ID (works for watch?v=, youtu.be, and embed) {%- endcomment -%}
+        {% if youtube_video_url contains "watch?v=" %}
+          {% assign video_id = youtube_video_url | split: 'v=' | last | split: '&' | first %}
+        {% elsif youtube_video_url contains "youtu.be/" %}
+          {% assign video_id = youtube_video_url | split: '/' | last | split: '?' | first %}
+        {% elsif youtube_video_url contains "/embed/" %}
+          {% assign video_id = youtube_video_url | split: '/embed/' | last | split: '?' | first %}
+        {% else %}
+          {% assign video_id = youtube_video_url %}
+        {% endif %}
+
+        <div class="autovid-slide">
+          <div style="position:relative; padding-right: {{ block.settings.slide_gap | default: 10 }}px;">
+            <iframe
+              id="youtube-player-{{ block.settings.product.id }}-{{ forloop.index }}"
+              data-video-url="{{ youtube_video_url }}"
+              src="https://www.youtube.com/embed/{{ video_id }}?enablejsapi=1"
+              width="100%"
+              height="{{ block.settings.video_height }}"
+              title="YouTube video player"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.css"/>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    $(document).ready(function(){
+    let players = {};
+
+    // Called by YouTube API when ready
+    window.onYouTubeIframeAPIReady = function () {
+      console.log('✅ YouTube IFrame API ready');
+      initYouTubePlayers();
+    };
+
+    function initYouTubePlayers() {
+      const iframes = document.querySelectorAll('iframe[id^="youtube-player-"]');
+      console.log('🎥 Found iframes:', iframes.length);
+
+      iframes.forEach(iframe => {
+        const iframeId = iframe.id;
+        if (!players[iframeId]) {
+          players[iframeId] = new YT.Player(iframeId, {
+            events: {
+              'onStateChange': onPlayerStateChange,
+              'onError': onPlayerError
+            }
+          });
+        }
+      });
+    }
+
+    function onPlayerStateChange(event) {
+      const iframeId = event.target.getIframe().id;
+      switch(event.data) {
+        case YT.PlayerState.PLAYING:
+          console.log(`▶ Playing: ${iframeId}`);
+          triggerCustomAction(iframeId);
+          break;
+        case YT.PlayerState.PAUSED:
+          console.log(`⏸ Paused: ${iframeId}`);
+          break;
+        case YT.PlayerState.ENDED:
+          console.log(`⏹ Ended: ${iframeId}`);
+          break;
+      }
+    }
+
+    function onPlayerError(event) {
+      const iframeId = event.target.getIframe().id;
+      console.error('❌ Error for', iframeId, event.data);
+    }
+    function triggerCustomAction(iframeId) {  
+      console.log("trigger custom action");
+      const shop_url = `{{shop_domain}}`;
+      const api_url = `/a/autovid/update-videocount`
+
+      const iframe = document.getElementById(iframeId);
+      const videoUrl = iframe?.dataset.videoUrl;
+
+      const payload = {
+        productId: "{{ block.settings.product.id }}",
+        videoUrl: videoUrl,
+      };
+
+      fetch(api_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to update video count");
+        return res.json();
+      })
+      .then(data => {
+        console.log("Play count updated successfully", data);
+      })
+      .catch(err => {
+        console.error("Error updating video count:", err);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      // Slick init
       $('.autovid-slick-carousel').slick({
         slidesToShow: {{ block.settings.slides_to_show | default: 1 }},
         slidesToScroll: 1,
         arrows: {{ block.settings.show_arrows | default: true }},
         dots: {{ block.settings.show_dots | default: true }},
-        infinite: false,
         autoplay: {{ block.settings.autoplay | default: false }},
         autoplaySpeed: {{ block.settings.autoplay_speed | default: 3000 }},
-        adaptiveHeight: true,
+        infinite: false,
         responsive: [
           { breakpoint: 1024, settings: { slidesToShow: {{ block.settings.slides_to_show | default: 1 }} } },
           { breakpoint: 600, settings: { slidesToShow: 1 } },
           { breakpoint: 480, settings: { slidesToShow: 1 } }
         ]
       });
+
+      // Re-init players after slick initializes (important for cloned slides)
+      setTimeout(initYouTubePlayers, 800);
     });
   </script>
-
-{%- comment -%}
-  <script src="https://www.youtube.com/iframe_api"></script>
-<script>
-  var players = [];
-
-  function onYouTubeIframeAPIReady() {
-    {% for youtube_video_url in youtube_urls_to_show %}
-    {
-      console.log("hiiii);
-      var playerId = 'youtube-player-{{ block.settings.product.id }}-{{ forloop.index }}';
-      if (document.getElementById(playerId)) {
-        players.push(new YT.Player(playerId, {
-          events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange
-          }
-        }));
-      }
-    }
-    {% endfor %}
-  }
-
-  function onPlayerReady(event) {
-    console.log('Player ready:', event.target.getIframe().id);
-  }
-
-  function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.PLAYING) {
-      console.log('Video playing:', event.target.getIframe().id);
-    } else if (event.data === YT.PlayerState.PAUSED) {
-      console.log('Video paused:', event.target.getIframe().id);
-    }
-  }
-</script>
-{%- endcomment -%}
- 
-
-
 {% endif %}
+
+
 
 {% schema %}
 {
@@ -108,12 +168,6 @@
       "id": "product",
       "label": "Product",
       "autofill": true
-    },
-    {
-      "type": "number",
-      "id": "show_count",
-      "label": "Number of videos to display",
-      "default": 3
     },
     {
       "type": "number",
@@ -133,11 +187,11 @@
       "label": "Show pagination dots",
       "default": true
     },
-     { 
-        "type": "number", 
-        "id": "slide_gap", 
-        "label": "Gap between slides (px)", 
-        "default": 10 
+     {
+        "type": "number",
+        "id": "slide_gap",
+        "label": "Gap between slides (px)",
+        "default": 10
     },
     {
       "type": "checkbox",
@@ -152,20 +206,20 @@
       "default": 3000
     },
     {
-    "type": "text", 
-    "id": "max_width", 
-    "label": "Maximum carousel width (px or %)", 
-    "default": "1200px"
+      "type": "text",
+      "id": "max_width",
+      "label": "Maximum carousel width (px or %)",
+      "default": "1200px"
     },
    {
-    "type": "range",
-    "id": "video_height",
-    "label": "YouTube Video Height (px)",
-    "min": 250,
-    "max": 800,
-    "step": 50,
-    "unit": "px",
-    "default": 350
+      "type": "range",
+      "id": "video_height",
+      "label": "YouTube Video Height (px)",
+      "min": 250,
+      "max": 800,
+      "step": 50,
+      "unit": "px",
+      "default": 350
     },
     {
       "type": "range",

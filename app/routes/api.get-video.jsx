@@ -16,7 +16,7 @@ export const action = async ({ request }) => {
     const test_apiUrl = `https://gileck.app.n8n.cloud/webhook-test/get-products?${params.toString()}`;
     const apiUrl = `https://gileck.app.n8n.cloud/webhook/get-products?${params.toString()}`;
     // const test2 = `https://gileck.app.n8n.cloud/webhook/get-products2?${params.toString()}`;
-    const changedApiUrl = `https://gileck.app.n8n.cloud/webhook-test/get-products-test01?${params.toString()}`;
+    const changedApiUrl = `https://gileck.app.n8n.cloud/webhook/get-products-test01?${params.toString()}`;
 
     const response = await fetch(changedApiUrl, {
       method: "POST",
