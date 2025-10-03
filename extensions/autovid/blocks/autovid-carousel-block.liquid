@@ -1,21 +1,61 @@
 {% assign raw_youtube_urls_string = block.settings.product.metafields.custom.youtube_videos_list.value %}
 {% assign youtube_urls = raw_youtube_urls_string | parse_json %}
+{% assign video_count = youtube_urls.size | default: 0 %}
+{% assign youtube_urls_to_show = youtube_urls | slice: 0, video_count %}
 
 <style>
-  .autovid-slick-carousel .slick-track {
+  #autovid-carousel-block .slick-list{
+     margin-right: -{{ block.settings.slide_gap | default: 10 }}px;
+  }
+  #autovid-carousel-block .slick-track {
     display: flex !important;
-    margin-right: -{{ block.settings.slide_gap | default: 10 }}px;
+  }
+  #autovid-carousel-block .slick-next:before,
+  #autovid-carousel-block .slick-prev:before{
+    color: #202020;
   }
 </style>
 
-{% if youtube_urls == nil or youtube_urls == empty %}
-  <p>No YouTube videos found.</p>
-{% else %}
-  {% assign show_count = youtube_urls.size %}
-  {% assign youtube_urls_to_show = youtube_urls | slice: 0, show_count %}
 
+{% if request.design_mode %}
+  {%- if video_count < 3 -%}
+    {%- comment -%} Show mock carousel (always 3 fake videos) {%- endcomment -%}
+    <div id="autovid-carousel-block" style="padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px;">
+     <p>This is an example mock videos carousel. To view your real videos on display, ensure more than 2 relevant videos was added via AutoVid dashboard for the product.</p>
+      <div class="autovid-slick-carousel" style="max-width: {{ block.settings.max_width | default: 1500 }}px">
+        {% assign mock_ids = "x7FUb4DmSmc,ScMzIvxBSi4,ScMzIvxBSi4" | split: "," %}
+        {% for video_id in mock_ids %}
+          <div class="autovid-slide">
+            <div style="position:relative; padding-right: {{ block.settings.slide_gap }}px;">
+              <iframe
+                id="youtube-player-mock-{{ forloop.index }}"
+                src="https://www.youtube.com/embed/{{ video_id }}?enablejsapi=1"
+                width="100%"
+                height="{{ block.settings.video_height }}"
+                title="Mock YouTube video"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen></iframe>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {%- elsif video_count > 2 -%}
+    {% assign show_real = true %}
+  {%- endif -%}
+{% else %}
+  {%- if video_count > 2 -%}
+    {% assign show_real = true %}
+  {%- else -%}
+    {% assign show_real = false %}
+  {%- endif -%}
+{% endif %}
+
+{%- if show_real -%}
   <div id="autovid-carousel-block" style="padding-top: {{ block.settings.padding_top | default: 30 }}px; padding-bottom: {{ block.settings.padding_bottom | default: 30 }}px;">
-    <div class="autovid-slick-carousel">
+    <div class="autovid-slick-carousel" style="max-width: {{ block.settings.max_width | default: 1500 }}px">
       {% for youtube_video_url in youtube_urls_to_show %}
         {% assign youtube_video_url = youtube_video_url | replace: "https://youtube.com", "https://www.youtube.com" %}
 
@@ -49,7 +89,15 @@
       {% endfor %}
     </div>
   </div>
+{% endif %}
 
+{%- if request.design_mode or show_real -%}
+  {% assign load_scripts = true %}
+{%- else -%}
+  {% assign load_scripts = false %}
+{%- endif -%}
+
+{%- if load_scripts  -%}
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick.min.css"/>
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.9.0/slick-theme.min.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -57,6 +105,8 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
+  const a = {{ block.settings.show_arrows  }};
+  const b = {{ block.settings.show_dots }};
     let players = {};
 
     // Called by YouTube API when ready
@@ -138,11 +188,11 @@
       $('.autovid-slick-carousel').slick({
         slidesToShow: {{ block.settings.slides_to_show | default: 1 }},
         slidesToScroll: 1,
-        arrows: {{ block.settings.show_arrows | default: true }},
-        dots: {{ block.settings.show_dots | default: true }},
-        autoplay: {{ block.settings.autoplay | default: false }},
+        arrows: {{ block.settings.show_arrows | default: false | json }},
+        dots: {{ block.settings.show_dots | default: false | json }},
+        autoplay: {{ block.settings.autoplay | default: false | json }},
         autoplaySpeed: {{ block.settings.autoplay_speed | default: 3000 }},
-        infinite: false,
+        infinite: {{ block.settings.loop | default: false | json }},
         responsive: [
           { breakpoint: 1024, settings: { slidesToShow: {{ block.settings.slides_to_show | default: 1 }} } },
           { breakpoint: 600, settings: { slidesToShow: 1 } },
@@ -200,16 +250,22 @@
       "default": false
     },
     {
+      "type": "checkbox",
+      "id": "loop",
+      "label": "Infinte Loop",
+      "default": false
+    },
+    {
       "type": "number",
       "id": "autoplay_speed",
       "label": "Autoplay speed (ms)",
       "default": 3000
     },
     {
-      "type": "text",
+      "type": "number",
       "id": "max_width",
-      "label": "Maximum carousel width (px or %)",
-      "default": "1200px"
+      "label": "Maximum carousel width (px)",
+      "default": 1400
     },
    {
       "type": "range",

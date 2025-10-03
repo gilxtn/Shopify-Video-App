@@ -229,23 +229,30 @@ export default function WelcomePage() {
       {/* How It Works */}
       <Layout.Section>
         <Card padding="400">
-          <BlockStack gap="300">
-            <Text as="h3" variant="headingMd">How It Works</Text>
-            <List type="number">
-              <List.Item>
-                <strong>One-time setup in a few clicks:</strong>
-                <p> Add a video block to your universal product page.</p>
-              </List.Item>
-              <List.Item>
-                <strong>Select the products:</strong>
-                <p>Accept our video picks, request new ones, or add your own.</p>
-              </List.Item>
-              <List.Item>
-                <strong>Track performance:</strong>
-                <p>See which videos convert best with automatic summaries and analytics.</p>
-              </List.Item>
-            </List>
-          </BlockStack>
+        <InlineGrid columns={{ lg: "1fr 1fr", sm: "1fr" }} gap="300" alignItems="start">
+            <BlockStack gap="300">
+              <Text as="h3" variant="headingMd">How It Works</Text>
+              <List type="number">
+                <List.Item>
+                  <strong>One-time setup in a few clicks:</strong>
+                  <p> Add a video block to your universal product page.</p>
+                </List.Item>
+                <List.Item>
+                  <strong>Select the products:</strong>
+                  <p>Accept our video picks, request new ones, or add your own.</p>
+                </List.Item>
+                <List.Item>
+                  <strong>Track performance:</strong>
+                  <p>See which videos convert best with automatic summaries and analytics.</p>
+                </List.Item>
+              </List>
+            </BlockStack>
+            <BlockStack gap="300" align="center">
+              <iframe width="100%" height="315" src="https://www.youtube.com/embed/Uc9hOmFKJNU?si=B0LvovQWOf9_1tah" 
+              title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </BlockStack>
+        </InlineGrid>
         </Card>
       </Layout.Section>
 

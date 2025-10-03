@@ -426,198 +426,267 @@ const navigateToSelect = (product_id)=>{
   // const [statuss, setStatuss] = useState("");
   // const [webhookError, setWebhookError] = useState("");
 
-  const handleVideo = async (ids) => {
-    try {
-      console.log(ids, "ids--------");
-      console.log(selectedResources, "selectedResources--------");
-      const inputIds = Array.isArray(ids) ? ids : selectedResources;
-      console.log(inputIds, "inputIds--------");
-      setIsVideoLoading(true);
-      const idsOnly = inputIds.map((id) => {
-        const parts = id.split("/");
-        return parts[parts.length - 1];
-      });
-      const response = await fetch(`/api/get-video`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(idsOnly),
-      });
-      console.log(response, "response-----");
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Something went wrong");
+const handleVideo = async (ids) => {
+  try {
+    const inputIds = Array.isArray(ids) ? ids : selectedResources;
+    const idsOnly = inputIds.map((id) => id.split("/").pop());
+    setIsVideoLoading(true);
+
+    const updatedProducts = [];
+    const erroredProducts = [];
+
+    // Loop over each product individually
+    for (const id of idsOnly) {
+      try {
+        const response = await fetch(`/api/get-video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([id]), 
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Something went wrong");
+        }
+
+        const data = await response.json();
+        console.log(data, "data for product--------------" + id);
+        const updated = Array.isArray(data.updateProducts)
+          ? data.updateProducts[0]
+          : data.updateProducts;
+
+
+        if (updated) {
+          updatedProducts.push(data);
+          setProducts((prev) => [...prev, data]);
+          fetchProducts(currentCursor ?? null, "next");
+          shopify.toast.show(`Video generated for ${updated.productTitle || "product"}`, { isError: false });
+        }
+
+      } catch (error) {
+        console.error("Error fetching video for product", id, error);
+        erroredProducts.push(id);
       }
-      const data = await response.json();
-      console.log(data, "data-----data frontend");
-
-// response example 
-// const newRes = {
-//     "success": true,
-//     "message": "All products updated successfully",
-//     "data": [
-//         {
-//             "data": {
-//                 "productUpdate": {
-//                     "product": {
-//                         "id": "gid://shopify/Product/9817987940645",
-//                         "title": "Enya Nova Go Acoustic",
-//                         "tags": [
-//                             "youtubevideo"
-//                         ]
-//                     },
-//                     "userErrors": []
-//                 },
-//                 "metafieldsSet": {
-//                     "metafields": [
-//                         {
-//                             "id": "gid://shopify/Metafield/64017908171045",
-//                             "namespace": "custom",
-//                             "key": "youtube_demo_video",
-//                             "value": "https://youtube.com/embed/JRSF6FHmxhI"
-//                         },
-//                         {
-//                             "id": "gid://shopify/Metafield/64017908203813",
-//                             "namespace": "custom",
-//                             "key": "youtube_demo_summary",
-//                             "value": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance."
-//                         },
-//                         {
-//                             "id": "gid://shopify/Metafield/73210663993637",
-//                             "namespace": "custom",
-//                             "key": "video_source",
-//                             "value": "AUTO"
-//                         },
-//                         {
-//                             "id": "gid://shopify/Metafield/64017908236581",
-//                             "namespace": "custom",
-//                             "key": "youtube_demo_highlights",
-//                             "value": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
-//                         }
-//                     ],
-//                     "userErrors": []
-//                 }
-//             },
-//             "extensions": {
-//                 "cost": {
-//                     "requestedQueryCost": 20,
-//                     "actualQueryCost": 20,
-//                     "throttleStatus": {
-//                         "maximumAvailable": 2000,
-//                         "currentlyAvailable": 1980,
-//                         "restoreRate": 100
-//                     }
-//                 }
-//             }
-//         },
-//         {
-//             "data": {
-//                 "productUpdate": {
-//                     "product": {
-//                         "id": "gid://shopify/Product/9817988006181",
-//                         "title": "Epiphone Thunderbird Bass",
-//                         "tags": [
-//                             "youtubevideo"
-//                         ]
-//                     },
-//                     "userErrors": []
-//                 },
-//                 "metafieldsSet": {
-//                     "metafields": [
-//                         {
-//                             "id": "gid://shopify/Metafield/63631010365733",
-//                             "namespace": "custom",
-//                             "key": "youtube_demo_video",
-//                             "value": "https://youtube.com/embed/b4Oq653XoYM"
-//                         },
-//                         {
-//                             "id": "gid://shopify/Metafield/63631010398501",
-//                             "namespace": "custom",
-//                             "key": "youtube_demo_summary",
-//                             "value": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair."
-//                         },
-//                         {
-//                             "id": "gid://shopify/Metafield/64913749082405",
-//                             "namespace": "custom",
-//                             "key": "video_source",
-//                             "value": "AUTO"
-//                         },
-//                         {
-//                             "id": "gid://shopify/Metafield/63631010431269",
-//                             "namespace": "custom",
-//                             "key": "youtube_demo_highlights",
-//                             "value": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
-//                         }
-//                     ],
-//                     "userErrors": []
-//                 }
-//             },
-//             "extensions": {
-//                 "cost": {
-//                     "requestedQueryCost": 20,
-//                     "actualQueryCost": 20,
-//                     "throttleStatus": {
-//                         "maximumAvailable": 2000,
-//                         "currentlyAvailable": 1980,
-//                         "restoreRate": 100
-//                     }
-//                 }
-//             }
-//         }
-//     ],
-//     "updateProducts": [
-//         {
-//             "shop": "workflow-dev1.myshopify.com",
-//             "productId": "9817987940645",
-//             "productTitle": "Enya Nova Go Acoustic",
-//             "videoUrl": "https://youtube.com/embed/JRSF6FHmxhI",
-//             "source_method": "AUTO",
-//             "aiSummary": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance.",
-//             "highlights": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
-//         },
-//         {
-//             "shop": "workflow-dev1.myshopify.com",
-//             "productId": "9817988006181",
-//             "productTitle": "Epiphone Thunderbird Bass",
-//             "videoUrl": "https://youtube.com/embed/b4Oq653XoYM",
-//             "source_method": "AUTO",
-//             "aiSummary": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair.",
-//             "highlights": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
-//         }
-//     ]
-// }
-
-
-      if (response.status === 206) {
-        console.log("partial success");
-        const erroredProducts = data.erroredProducts
-          .map((product) => product.title)
-          .join(", ");
-        console.log(data.erroredProducts, "erroredProducts", erroredProducts);
-        shopify.toast.show(
-          `Coundn't find a suitable video for ${erroredProducts}`,
-          {
-            isError: false,
-          },
-        );
-      } else {
-        const updatedCount = idsOnly.length;
-        shopify.toast.show(
-          `Video generated for ${updatedCount} product${updatedCount > 1 ? "s" : ""}`,
-          {
-            isError: false,
-          },
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching video:", error);
-      shopify.toast.show(` Error: ${error.message}`, { isError: true });
-    } finally {
-      setIsVideoLoading(false);
-      fetchProducts(currentCursor ?? null, "next");
     }
-  };
+
+    // Final summary for errored products
+    if (erroredProducts.length) {
+      shopify.toast.show(
+        `Couldn't find videos for ${erroredProducts.join(", ")}`,
+        { isError: true }
+      );
+    }
+
+    if (updatedProducts.length) {
+      shopify.toast.show(
+        `Video generated for ${updatedProducts.length} product${
+          updatedProducts.length > 1 ? "s" : ""
+        }`,
+        { isError: false }
+      );
+    }
+
+  } catch (error) {
+    console.error("Error fetching video:", error);
+    shopify.toast.show(`Error: ${error.message}`, { isError: true });
+  } finally {
+    setIsVideoLoading(false);
+    fetchProducts(currentCursor ?? null, "next");
+  }
+};
+
+//   const handleVideo = async (ids) => {
+//     try {
+//       console.log(ids, "ids--------");
+//       console.log(selectedResources, "selectedResources--------");
+//       const inputIds = Array.isArray(ids) ? ids : selectedResources;
+//       console.log(inputIds, "inputIds--------");
+//       setIsVideoLoading(true);
+//       const idsOnly = inputIds.map((id) => {
+//         const parts = id.split("/");
+//         return parts[parts.length - 1];
+//       });
+//       const response = await fetch(`/api/get-video`, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify(idsOnly),
+//       });
+//       console.log(response, "response-----");
+//       if (!response.ok) {
+//         const errorData = await response.json();
+//         throw new Error(errorData.error || "Something went wrong");
+//       }
+//       const data = await response.json();
+//       console.log(data, "data-----data frontend");
+
+// // response example 
+// // const newRes = {
+// //     "success": true,
+// //     "message": "All products updated successfully",
+// //     "data": [
+// //         {
+// //             "data": {
+// //                 "productUpdate": {
+// //                     "product": {
+// //                         "id": "gid://shopify/Product/9817987940645",
+// //                         "title": "Enya Nova Go Acoustic",
+// //                         "tags": [
+// //                             "youtubevideo"
+// //                         ]
+// //                     },
+// //                     "userErrors": []
+// //                 },
+// //                 "metafieldsSet": {
+// //                     "metafields": [
+// //                         {
+// //                             "id": "gid://shopify/Metafield/64017908171045",
+// //                             "namespace": "custom",
+// //                             "key": "youtube_demo_video",
+// //                             "value": "https://youtube.com/embed/JRSF6FHmxhI"
+// //                         },
+// //                         {
+// //                             "id": "gid://shopify/Metafield/64017908203813",
+// //                             "namespace": "custom",
+// //                             "key": "youtube_demo_summary",
+// //                             "value": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance."
+// //                         },
+// //                         {
+// //                             "id": "gid://shopify/Metafield/73210663993637",
+// //                             "namespace": "custom",
+// //                             "key": "video_source",
+// //                             "value": "AUTO"
+// //                         },
+// //                         {
+// //                             "id": "gid://shopify/Metafield/64017908236581",
+// //                             "namespace": "custom",
+// //                             "key": "youtube_demo_highlights",
+// //                             "value": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
+// //                         }
+// //                     ],
+// //                     "userErrors": []
+// //                 }
+// //             },
+// //             "extensions": {
+// //                 "cost": {
+// //                     "requestedQueryCost": 20,
+// //                     "actualQueryCost": 20,
+// //                     "throttleStatus": {
+// //                         "maximumAvailable": 2000,
+// //                         "currentlyAvailable": 1980,
+// //                         "restoreRate": 100
+// //                     }
+// //                 }
+// //             }
+// //         },
+// //         {
+// //             "data": {
+// //                 "productUpdate": {
+// //                     "product": {
+// //                         "id": "gid://shopify/Product/9817988006181",
+// //                         "title": "Epiphone Thunderbird Bass",
+// //                         "tags": [
+// //                             "youtubevideo"
+// //                         ]
+// //                     },
+// //                     "userErrors": []
+// //                 },
+// //                 "metafieldsSet": {
+// //                     "metafields": [
+// //                         {
+// //                             "id": "gid://shopify/Metafield/63631010365733",
+// //                             "namespace": "custom",
+// //                             "key": "youtube_demo_video",
+// //                             "value": "https://youtube.com/embed/b4Oq653XoYM"
+// //                         },
+// //                         {
+// //                             "id": "gid://shopify/Metafield/63631010398501",
+// //                             "namespace": "custom",
+// //                             "key": "youtube_demo_summary",
+// //                             "value": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair."
+// //                         },
+// //                         {
+// //                             "id": "gid://shopify/Metafield/64913749082405",
+// //                             "namespace": "custom",
+// //                             "key": "video_source",
+// //                             "value": "AUTO"
+// //                         },
+// //                         {
+// //                             "id": "gid://shopify/Metafield/63631010431269",
+// //                             "namespace": "custom",
+// //                             "key": "youtube_demo_highlights",
+// //                             "value": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
+// //                         }
+// //                     ],
+// //                     "userErrors": []
+// //                 }
+// //             },
+// //             "extensions": {
+// //                 "cost": {
+// //                     "requestedQueryCost": 20,
+// //                     "actualQueryCost": 20,
+// //                     "throttleStatus": {
+// //                         "maximumAvailable": 2000,
+// //                         "currentlyAvailable": 1980,
+// //                         "restoreRate": 100
+// //                     }
+// //                 }
+// //             }
+// //         }
+// //     ],
+// //     "updateProducts": [
+// //         {
+// //             "shop": "workflow-dev1.myshopify.com",
+// //             "productId": "9817987940645",
+// //             "productTitle": "Enya Nova Go Acoustic",
+// //             "videoUrl": "https://youtube.com/embed/JRSF6FHmxhI",
+// //             "source_method": "AUTO",
+// //             "aiSummary": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance.",
+// //             "highlights": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
+// //         },
+// //         {
+// //             "shop": "workflow-dev1.myshopify.com",
+// //             "productId": "9817988006181",
+// //             "productTitle": "Epiphone Thunderbird Bass",
+// //             "videoUrl": "https://youtube.com/embed/b4Oq653XoYM",
+// //             "source_method": "AUTO",
+// //             "aiSummary": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair.",
+// //             "highlights": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
+// //         }
+// //     ]
+// // }
+
+
+//       if (response.status === 206) {
+//         console.log("partial success");
+//         const erroredProducts = data.erroredProducts
+//           .map((product) => product.title)
+//           .join(", ");
+//         console.log(data.erroredProducts, "erroredProducts", erroredProducts);
+//         shopify.toast.show(
+//           `Coundn't find a suitable video for ${erroredProducts}`,
+//           {
+//             isError: false,
+//           },
+//         );
+//       } else {
+//         const updatedCount = idsOnly.length;
+//         shopify.toast.show(
+//           `Video generated for ${updatedCount} product${updatedCount > 1 ? "s" : ""}`,
+//           {
+//             isError: false,
+//           },
+//         );
+//       }
+//     } catch (error) {
+//       console.error("Error fetching video:", error);
+//       shopify.toast.show(` Error: ${error.message}`, { isError: true });
+//     } finally {
+//       setIsVideoLoading(false);
+//       fetchProducts(currentCursor ?? null, "next");
+//     }
+//   };
 
   const promotedBulkActions = [
     {

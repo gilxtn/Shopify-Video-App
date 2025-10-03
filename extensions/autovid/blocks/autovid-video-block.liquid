@@ -46,6 +46,39 @@
   </div>
 {% endif %}
 
+{% assign page_handle = '' %}
+{% if template.name contains 'product' %}
+  {% assign page_handle = product.handle %}
+{% elsif template.name contains 'collection' %}
+  {% assign page_handle = collection.handle %}
+{% elsif template.name contains 'page' %}
+  {% assign page_handle = page.handle %}
+{% else %}
+  {% assign page_handle = template.name %}
+{% endif %}
+
+<script>
+if (!window.autovidPageViewCounted) {
+    window.autovidPageViewCounted = true;
+
+    const productId = "{{ block.settings.product.id }}";
+    const shopDomain = "{{ shop.domain }}";
+    const pageType = "{{ template.name }}"; 
+    const pageHandle = "{{ page_handle }}";
+    
+    fetch("/a/autovid/update-pageview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, pageType, pageHandle, shop: shopDomain })
+    })
+    .then(res => res.json())
+    .then(data => console.log("Page view recorded", data))
+    .catch(err => console.error("Error recording page view:", err));
+}
+</script>
+
+
+
 <script src="https://www.youtube.com/iframe_api"></script>
  <script>
   let player;

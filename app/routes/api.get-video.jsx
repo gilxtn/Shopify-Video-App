@@ -31,7 +31,7 @@ export const action = async ({ request }) => {
     });
 
     const data = await response.json();
-    console.log(data, "data------");
+    console.log(data, "data----------Webhook response");
     if (!response.ok || data?.code === 404) {
       throw new Response(
         JSON.stringify({
@@ -49,19 +49,19 @@ export const action = async ({ request }) => {
     const updateProducts = [];
     const erroredProducts = [];
     data.forEach(async (item) => {
-      if (item.data.metafieldsSet?.userErrors?.length > 0) {
+      if (item?.data?.metafieldsSet?.userErrors?.length > 0) {
         erroredProducts.push(item.data.productUpdate?.product);
       } else {
-        const videoUrl = item.data.metafieldsSet.metafields.find(
+        const videoUrl = item?.data?.metafieldsSet?.metafields.find(
           (field) => field.key === "youtube_demo_video",
         );
-        const aiSummary = item.data.metafieldsSet.metafields.find(
+        const aiSummary = item?.data?.metafieldsSet?.metafields.find(
           (field) => field.key === "youtube_demo_summary",
         );
-        const highlights = item.data.metafieldsSet.metafields.find(
+        const highlights = item?.data?.metafieldsSet?.metafields.find(
           (field) => field.key === "youtube_demo_highlights",
         );
-        const otherVideosField = item.data.metafieldsSet.metafields.find(
+        const otherVideosField = item?.data?.metafieldsSet?.metafields.find(
           (field) => field.key === "youtube_videos_list",
         );
         let otherVideos = [];
@@ -73,11 +73,11 @@ export const action = async ({ request }) => {
           }
         }
         item;
-        const productId = item.data.productUpdate?.product?.id.split("/").pop();
+        const productId = item?.data?.productUpdate?.product?.id.split("/").pop();
         const productInfo = {
           shop: shop,
           productId: productId,
-          productTitle: item.data.productUpdate?.product?.title,
+          productTitle: item?.data?.productUpdate?.product?.title,
           videoUrl: videoUrl?.value,
           source_method: "AUTO",
           aiSummary: aiSummary?.value,
@@ -120,72 +120,9 @@ export const action = async ({ request }) => {
             },
           });
         }
-
-        // await prisma.productExtendedInfo.updateMany({
-        //   where: {
-        //     productId: BigInt(productId),
-        //     shop,
-        //   },
-        //   data: { isMain: false },
-        // });
-
-
-        // await prisma.productExtendedInfo.upsert({
-        //   where: {
-        //     productId_shop_videoUrl: {
-        //       productId: BigInt(productId),
-        //       shop,
-        //       videoUrl: videoUrl?.value,
-        //     },
-        //   },
-        //   update: {
-        //     productTitle: item.data.productUpdate?.product?.title,
-        //     aiSummary: aiSummary?.value,
-        //     highlights: highlights?.value,
-        //     source_method: "AUTO",
-        //     isMain: true,
-        //   },
-        //   create: {
-        //     shop,
-        //     productId: BigInt(productId),
-        //     productTitle: item.data.productUpdate?.product?.title,
-        //     videoUrl: videoUrl?.value,
-        //     aiSummary: aiSummary?.value,
-        //     highlights: highlights?.value,
-        //     source_method: "AUTO",
-        //     isMain: true,
-        //   },
-        // });
-
-        //  // save other videos (no summary/highlights, not main)
-        // for (const ov of otherVideos) {
-        //   await prisma.productExtendedInfo.upsert({
-        //     where: {
-        //       productId_shop_videoUrl: {
-        //         productId: BigInt(productId),
-        //         shop,
-        //         videoUrl: ov,
-        //       },
-        //     },
-        //     update: {
-        //       productTitle: item.data.productUpdate?.product?.title,
-        //       source_method: "AUTO",
-        //       isMain: false,
-        //     },
-        //     create: {
-        //       shop,
-        //       productId: BigInt(productId),
-        //       productTitle: item.data.productUpdate?.product?.title,
-        //       videoUrl: ov,
-        //       source_method: "AUTO",
-        //       isMain: false,
-        //     },
-        //   });
-        // }
-
       }
     });
-
+    
     console.log(updateProducts, "updateProducts");
     console.log(erroredProducts, "erroredProducts");
 
@@ -198,10 +135,7 @@ export const action = async ({ request }) => {
           erroredProducts,
           updateProducts,
         }),
-        {
-          status: 206,
-          headers: { "Content-Type": "application/json" },
-        },
+        {status: 206, headers: { "Content-Type": "application/json" },},
       );
     }
     return new Response(
@@ -211,10 +145,7 @@ export const action = async ({ request }) => {
         data,
         updateProducts,
       }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 200, headers: { "Content-Type": "application/json" },},
     );
   } catch (error) {
     console.error("error", error);
@@ -223,10 +154,7 @@ export const action = async ({ request }) => {
         error: error?.message || "Unknown error",
         success: false,
       }),
-      {
-        status: error?.status || error?.statusCode || 500,
-        headers: { "Content-Type": "application/json" },
-      },
+      {status: error?.status || error?.statusCode || 500,headers: { "Content-Type": "application/json" },},
     );
   }
 };
