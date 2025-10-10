@@ -73,6 +73,33 @@ export const action = async ({ request }) => {
           aiSummary: aiSummary?.value,
           highlights: highlights?.value,
         };
+        
+    const existingTags = item.data.productUpdate?.product?.tags || [];
+
+    if (!existingTags.includes("youtubevideo")) {
+      try {
+        await admin.graphql(`
+          mutation {
+            productUpdate(input: {
+              id: "${item.data.productUpdate?.product?.id}",
+              tags: ${JSON.stringify([...existingTags, "youtubevideo"])}
+            }) {
+              product {
+                id
+                tags
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        `);
+      } catch (err) {
+        console.error("Failed to add youtubevideo tag", err);
+      }
+    }
+        
         updateProducts.push(productInfo);
         await prisma.ProductExtendedInfo.upsert({
           where: { productId: productInfo.productId },
