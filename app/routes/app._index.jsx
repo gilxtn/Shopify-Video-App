@@ -182,6 +182,17 @@ export default function ProductTable() {
     [],
   );
 
+  useEffect(() => {
+    if (radioValue[0] === "auto") {
+      // Reset to original auto main video when switching back
+      const autoMain = modalProduct?.extendedInfo?.find((v) => v.isMain)?.videoUrl;
+      if (autoMain) {
+        setAppliedVideoLink(null); // clear manual override
+        setIsApplied(false);
+      }
+    }
+  }, [radioValue, modalProduct]);
+
   const fetchProducts = (cursorValue = null, direction = "next") => {
     setIsProductLoading(true);
     const tabFilter =
