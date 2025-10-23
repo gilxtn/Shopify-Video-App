@@ -25,8 +25,8 @@ if (host === "localhost") {
   hmrConfig = {
     protocol: "ws",
     host: "localhost",
-    port: 64999,
-    clientPort: 64999,
+    port: 64998,
+    clientPort: 64998,
   };
 } else {
   hmrConfig = {

@@ -58,78 +58,90 @@
 {% endif %}
 
 <script>
-if (!window.autovidPageViewCounted) {
-    window.autovidPageViewCounted = true;
+  // --- Shared global setup ---
+  window.autovidPlayers = window.autovidPlayers || {};
 
-    const productId = "{{ block.settings.product.id }}";
-    const shopDomain = "{{ shop.domain }}";
-    const pageType = "{{ template.name }}"; 
-    const pageHandle = "{{ page_handle }}";
-    
-    fetch("/a/autovid/update-pageview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, pageType, pageHandle, shop: shopDomain })
-    })
-    .then(res => res.json())
-    .then(data => console.log("Page view recorded", data))
-    .catch(err => console.error("Error recording page view:", err));
-}
-</script>
+  // --- Player setup for this block ---
+  function autovidInitSingleVideo() {
+    const iframe = document.getElementById("youtube-player-{{ block.id }}");
+    if (!iframe || window.autovidPlayers[iframe.id]) return;
 
-
-
-<script src="https://www.youtube.com/iframe_api"></script>
- <script>
-  let player;
-  function onYouTubeIframeAPIReady() {
-      player = new YT.Player('youtube-player-{{ block.settings.product.id }}', {
-          events: {
-              'onReady': onPlayerReady,
-              'onStateChange': onPlayerStateChange
-          }
-      });
-  }
-  function onPlayerReady(event) {
-      console.log('Player is ready');
-  }
-  function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-          console.log('User clicked play on product ID: {{ block.settings.product.id }}');
-         // document.getElementById('action-output').innerText = 'Play action triggered at ' + new Date().toLocaleTimeString();
-           triggerCustomAction();
+    // ✅ Now safe because API is loaded (YT.Player available)
+    window.autovidPlayers[iframe.id] = new YT.Player(iframe.id, {
+      events: {
+        'onStateChange': autovidOnStateChange,
+        'onError': autovidOnError
       }
-  }
-
-  function triggerCustomAction() {
-    console.log("trigger custom action")
-    const shop_url = `{{shop_domain}}`;
-    const api_url = `/a/autovid/update-videocount`
-    
-    const payload = {
-      productId: "{{ block.settings.product.id }}",
-      videoUrl: "{{ youtube_video_url }}",
-    };
-
-    fetch(api_url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to update video count");
-      return res.json();
-    })
-    .then(data => {
-      console.log("Play count updated successfully", data);
-    })
-    .catch(err => {
-      console.error("Error updating video count:", err);
     });
   }
+
+  function autovidOnStateChange(event) {
+    const iframeId = event.target.getIframe().id;
+    const playerState = event.data;
+    if (playerState === YT.PlayerState.PLAYING) {
+      console.log("▶️ Playing single video:", iframeId);
+      autovidTriggerPlayEvent(iframeId);
+    } else if (playerState === YT.PlayerState.ENDED) {
+      console.log("⏹ Ended:", iframeId);
+    }
+  }
+
+  function autovidOnError(event) {
+    console.error("❌ YT Player error:", event.data);
+  }
+
+  function autovidTriggerPlayEvent(iframeId) {
+    const iframe = document.getElementById(iframeId);
+    const videoUrl = iframe?.src?.split("?")[0];
+    const payload = {
+      productId: "{{ block.settings.product.id }}",
+      videoUrl
+    };
+
+    fetch(`/a/autovid/update-videocount`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json())
+      .then(data => console.log("✅ Play count updated:", data))
+      .catch(err => console.error("Error updating play count:", err));
+  }
+
+  // --- Shared global YT API callback ---
+  window.onYouTubeIframeAPIReady = window.onYouTubeIframeAPIReady || function () {
+    console.log("✅ YouTube API ready — initializing players");
+    // Run init for all single blocks waiting for API
+    const allIframes = document.querySelectorAll("[id^='youtube-player-']");
+    allIframes.forEach(iframe => {
+      if (!window.autovidPlayers[iframe.id]) {
+        window.autovidPlayers[iframe.id] = new YT.Player(iframe.id, {
+          events: {
+            'onStateChange': autovidOnStateChange,
+            'onError': autovidOnError
+          }
+        });
+      }
+    });
+  };
+
+  // --- Load YT API only once ---
+  document.addEventListener("DOMContentLoaded", () => {
+    if (window.YT && YT.Player) {
+      autovidInitSingleVideo();
+    } else {
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+      }
+      // Wait until API ready (handled globally)
+    }
+  });
 </script>
+
+
+
 
 
 {% schema %}

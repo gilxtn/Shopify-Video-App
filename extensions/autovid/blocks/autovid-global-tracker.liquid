@@ -1,0 +1,47 @@
+{% if shop %}
+<script>
+(function() {
+  if (window.autovidPageViewCounted) return;
+  window.autovidPageViewCounted = true;
+
+  const shopDomain = "{{ shop.domain }}";
+  const pageType = "{{ template.name }}";
+  let pageHandle = "";
+
+  const idd = {{product.id }};
+
+  {% if template.name contains 'product' %}
+    pageHandle = "{{ product.handle }}";
+  {% elsif template.name contains 'collection' %}
+    pageHandle = "{{ collection.handle }}";
+  {% elsif template.name contains 'page' %}
+    pageHandle = "{{ page.handle }}";
+  {% else %}
+    pageHandle = "{{ template.name }}";
+  {% endif %}
+
+ 
+  fetch("/a/autovid/update-pageview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      shop: shopDomain,
+      productId: "{{ product.id | default: 0 }}",
+      pageType,
+      pageHandle
+    })
+  })
+  .then(r => r.json())
+  .then(d => console.log("Autovid pageview tracked", d))
+  .catch(e => console.error("Autovid pageview error", e));
+})();
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Autovid Analytics Tracker",
+  "target": "head",
+  "settings": []
+}
+{% endschema %}

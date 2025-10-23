@@ -53,7 +53,6 @@ model VideoPageView {
   @@unique([shop, productId, pageType, pageHandle])
 }
 
-
 model ProductExtendedInfo {
   id            Int          @id @default(autoincrement())
   productId     BigInt       
@@ -71,4 +70,20 @@ model ProductExtendedInfo {
 enum SourceMethod {
   AUTO
   MANUAL
+}
+
+model Activity {
+  id        Int       @id @default(autoincrement())
+  shop      String
+  productId BigInt
+  type      ActivityType 
+  videoUrl  String?      // for VIDEO_PLAY only
+  pageType  String?      // for PAGE_VIEW only
+  pageHandle String?     // optional for page views
+  createdAt DateTime @default(now())
+}
+
+enum ActivityType {
+  VIDEO_PLAY
+  PAGE_VIEW
 }

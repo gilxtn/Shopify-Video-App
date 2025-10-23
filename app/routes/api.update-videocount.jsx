@@ -8,7 +8,8 @@ export const action = async ({ request }) => {
   const { productId, videoUrl } = data;
 
   if (!productId || !videoUrl) {
-    return new Response("Invalid input", { status: 400 });
+    console.log("Invalid input:", { productId, videoUrl });
+    return new Response("Invalid input", { status: 400 , productId:productId, videoUrl:videoUrl });
   }
 
   try {
@@ -31,6 +32,17 @@ export const action = async ({ request }) => {
         playCount: 1,
       },
     });
+    
+    // Add Activity log
+    await prisma.activity.create({
+      data: {
+        shop: session.shop,
+        productId: BigInt(productId),
+        type: "VIDEO_PLAY",
+        videoUrl,
+      },
+    });
+
     console.log(result, "result");
     return new Response(JSON.stringify({ success: true, playCount: result.playCount }), { status: 200 });
   } catch (error) {

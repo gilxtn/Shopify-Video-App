@@ -28,7 +28,7 @@
           <div class="autovid-slide">
             <div style="position:relative; padding-right: {{ block.settings.slide_gap }}px;">
               <iframe
-                id="youtube-player-mock-{{ forloop.index }}"
+                id="youtube-crl-player-mock-{{ forloop.index }}"
                 src="https://www.youtube.com/embed/{{ video_id }}?enablejsapi=1"
                 width="100%"
                 height="{{ block.settings.video_height }}"
@@ -73,7 +73,7 @@
         <div class="autovid-slide">
           <div style="position:relative; padding-right: {{ block.settings.slide_gap | default: 10 }}px;">
             <iframe
-              id="youtube-player-{{ block.settings.product.id }}-{{ forloop.index }}"
+              id="youtube-crl-player-{{ block.settings.product.id }}-{{ forloop.index }}"
               data-video-url="{{ youtube_video_url }}"
               src="https://www.youtube.com/embed/{{ video_id }}?enablejsapi=1"
               width="100%"
@@ -105,8 +105,6 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-  const a = {{ block.settings.show_arrows  }};
-  const b = {{ block.settings.show_dots }};
     let players = {};
 
     // Called by YouTube API when ready
@@ -116,7 +114,7 @@
     };
 
     function initYouTubePlayers() {
-      const iframes = document.querySelectorAll('iframe[id^="youtube-player-"]');
+      const iframes = document.querySelectorAll('iframe[id^="youtube-crl-player-"]');
       console.log('🎥 Found iframes:', iframes.length);
 
       iframes.forEach(iframe => {
@@ -125,7 +123,7 @@
           players[iframeId] = new YT.Player(iframeId, {
             events: {
               'onStateChange': onPlayerStateChange,
-              'onError': onPlayerError
+              'onError': onPlayerErrorCrl
             }
           });
         }
@@ -137,7 +135,7 @@
       switch(event.data) {
         case YT.PlayerState.PLAYING:
           console.log(`▶ Playing: ${iframeId}`);
-          triggerCustomAction(iframeId);
+          triggerCustomActionCarousel(iframeId);
           break;
         case YT.PlayerState.PAUSED:
           console.log(`⏸ Paused: ${iframeId}`);
@@ -148,11 +146,11 @@
       }
     }
 
-    function onPlayerError(event) {
+    function onPlayerErrorCrl(event) {
       const iframeId = event.target.getIframe().id;
       console.error('❌ Error for', iframeId, event.data);
     }
-    function triggerCustomAction(iframeId) {  
+    function triggerCustomActionCarousel(iframeId) {  
       console.log("trigger custom action");
       const shop_url = `{{shop_domain}}`;
       const api_url = `/a/autovid/update-videocount`

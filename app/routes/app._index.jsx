@@ -1,40 +1,10 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import {
-  useLoaderData,
-  useFetcher,
-  useNavigate,
-} from "@remix-run/react";
-import {
-  Page,
-  Layout,
-  IndexTable,
-  Text,
-  Card,
-  Thumbnail,
-  InlineGrid,
-  useIndexResourceState,
-  IndexFilters,
-  useSetIndexFiltersMode,
-  Badge,
-  Link,
-  ChoiceList,
-  TextField,
-  Banner,
-  Spinner,
-  Icon,
-  InlineStack,
-  Autocomplete,
-  Box,
-  Divider,
-  FormLayout,
-  PageActions,
-  Button,
-  BlockStack,
-  ButtonGroup,
-} from "@shopify/polaris";
+import {useLoaderData, useFetcher,useNavigate,} from "@remix-run/react";
+import { Page, Layout, IndexTable, Text, Card, Thumbnail, InlineGrid, useIndexResourceState, IndexFilters, useSetIndexFiltersMode, Badge, Link, ChoiceList, TextField, Banner, Spinner, Icon, InlineStack, Autocomplete, Box, Divider, FormLayout, PageActions, Button, BlockStack, ButtonGroup, ActionMenu,} from "@shopify/polaris";
 import { TitleBar, useAppBridge, Modal } from "@shopify/app-bridge-react";
-import { DeleteIcon, ViewIcon } from "@shopify/polaris-icons";
+import { CircleChevronLeftIcon, DeleteIcon, TextBlockIcon, ViewIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
+import { formatPrompt } from "./utils/prompts";
 
 export const loader = async ({ request }) => {
   const { admin, session, redirect } = await authenticate.admin(request);
@@ -77,7 +47,7 @@ export const loader = async ({ request }) => {
   const response = await admin.graphql(`
     query {
       currentAppInstallation {
-        metafields(first: 20) {
+        metafields(first: 30) {
           edges {
             node {
               namespace
@@ -172,14 +142,9 @@ export default function ProductTable() {
   const [editVideoSummary, setEditVideoSummary] = useState("");
   const [editVideoHighlights, setEditVideoHighlights] = useState("");
   const [editError, setEditError] = useState("");
-  const [manualError, setManualError] = useState({
-    summary: "",
-    highlights: "",
-  });
   const [pageShow, setPageShow] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [radioValue, setRadioValue] = useState(["auto"]);
-  const handleEditType = useCallback((value) => setRadioValue(value), []);
   const shopify = useAppBridge();
   const navigate = useNavigate();
   const handleFiltersQueryChange = useCallback(
@@ -244,16 +209,7 @@ const navigateToSelect = (product_id)=>{
     } else {
       fetchProducts(null, "next");
     }
-  }, [
-    demoVideo,
-    category,
-    vendor,
-    status,
-    tag,
-    sortSelected,
-    selectedTab,
-    queryValue,
-  ]);
+  }, [ demoVideo, category, vendor, status, tag, sortSelected, selectedTab, queryValue,]);
 
   useEffect(() => {
     if (fetcher.data) {
@@ -269,12 +225,7 @@ const navigateToSelect = (product_id)=>{
     }
   }, [fetcher.data]);
 
-  const [itemStrings, setItemStrings] = useState([
-    "All",
-    "Active",
-    "Draft",
-    "Archived",
-  ]);
+  const [itemStrings, setItemStrings] = useState([ "All", "Active", "Draft", "Archived",]);
 
   const tabs = itemStrings.map((item, index) => ({
     content: item,
@@ -285,7 +236,6 @@ const navigateToSelect = (product_id)=>{
   }));
 
   const appliedFilters = [];
-
   if (demoVideo !== null) {
     appliedFilters.push({
       key: "demoVideo",
@@ -324,114 +274,110 @@ const navigateToSelect = (product_id)=>{
     });
   }
 
-  const filters = [
-    {
-      key: "demoVideo",
-      label: "Has Youtube Video",
-      filter: (
-        <ChoiceList
-          title="Demo video"
-          titleHidden
-          choices={[
-            { label: "Yes", value: "true" },
-            { label: "No", value: "false" },
-          ]}
-          selected={demoVideo !== null ? [demoVideo.toString()] : []}
-          onChange={(value) => setDemoVideo(value[0])}
-        />
-      ),
-      shortcut: true,
-    },
-    {
-      key: "category",
-      label: "Category",
-      filter: (
-        <ChoiceList
-          title="Category"
-          choices={categories.map((cat) => ({
-            label: cat?.name,
-            value: cat?.id,
-          }))}
-          selected={[category]}
-          onChange={(selected) => setCategory(selected[0])}
-        />
-      ),
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      filter: (
-        <TextField
-          label="Vendor"
-          value={vendor || ""}
-          onChange={(value) => setVendor(value)}
-          autoComplete="off"
-        />
-      ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      filter: (
-        <ChoiceList
-          title="Status"
-          titleHidden
-          choices={[
-            { label: "Active", value: "ACTIVE" },
-            { label: "Draft", value: "DRAFT" },
-            { label: "Archived", value: "ARCHIVED" },
-          ]}
-          selected={status ? [status] : []}
-          onChange={(value) => setStatus(value[0])}
-        />
-      ),
-    },
-    {
-      key: "tag",
-      label: "Tag",
-      filter: (
-        <Autocomplete
-          options={tags?.map((t) => ({ label: t, value: t })) || []}
-          selected={tag ? [tag] : []}
-          onSelect={(selected) => {
-            const selectedValue = selected[0];
-            setTag(selectedValue);
-          }}
-          textField={
-            <Autocomplete.TextField
-              label="Tag"
-              value={tag || ""}
-              onChange={(value) => setTag(value)}
-              autoComplete="off"
-            />
-          }
-        />
-      ),
-    },
-  ];
+const filters = [
+  {
+    key: "demoVideo",
+    label: "Has Youtube Video",
+    filter: (
+      <ChoiceList
+        title="Demo video"
+        titleHidden
+        choices={[
+          { label: "Yes", value: "true" },
+          { label: "No", value: "false" },
+        ]}
+        selected={demoVideo !== null ? [demoVideo.toString()] : []}
+        onChange={(value) => setDemoVideo(value[0])}
+      />
+    ),
+    shortcut: true,
+  },
+  {
+    key: "category",
+    label: "Category",
+    filter: (
+      <ChoiceList
+        title="Category"
+        choices={categories.map((cat) => ({
+          label: cat?.name,
+          value: cat?.id,
+        }))}
+        selected={[category]}
+        onChange={(selected) => setCategory(selected[0])}
+      />
+    ),
+  },
+  {
+    key: "vendor",
+    label: "Vendor",
+    filter: (
+      <TextField
+        label="Vendor"
+        value={vendor || ""}
+        onChange={(value) => setVendor(value)}
+        autoComplete="off"
+      />
+    ),
+  },
+  {
+    key: "status",
+    label: "Status",
+    filter: (
+      <ChoiceList
+        title="Status"
+        titleHidden
+        choices={[
+          { label: "Active", value: "ACTIVE" },
+          { label: "Draft", value: "DRAFT" },
+          { label: "Archived", value: "ARCHIVED" },
+        ]}
+        selected={status ? [status] : []}
+        onChange={(value) => setStatus(value[0])}
+      />
+    ),
+  },
+  {
+    key: "tag",
+    label: "Tag",
+    filter: (
+      <Autocomplete
+        options={tags?.map((t) => ({ label: t, value: t })) || []}
+        selected={tag ? [tag] : []}
+        onSelect={(selected) => {
+          const selectedValue = selected[0];
+          setTag(selectedValue);
+        }}
+        textField={
+          <Autocomplete.TextField
+            label="Tag"
+            value={tag || ""}
+            onChange={(value) => setTag(value)}
+            autoComplete="off"
+          />
+        }
+      />
+    ),
+  },
+];
 
-  const sortOptions = [
-    { label: "Title", value: "title asc", directionLabel: "A-Z" },
-    { label: "Title", value: "title desc", directionLabel: "Z-A" },
-    { label: "Vendor", value: "vendor asc", directionLabel: "A-Z" },
-    { label: "Vendor", value: "vendor desc", directionLabel: "Z-A" },
-    { label: "Inventory", value: "inventory asc", directionLabel: "Low to High",},
-    { label: "Inventory", value: "inventory desc", directionLabel: "High to Low",},
-    { label: "Created", value: "createdAt asc", directionLabel: "Oldest first",},
-    { label: "Created", value: "createdAt desc", directionLabel: "Newest first",},
-  ];
+const sortOptions = [
+  { label: "Title", value: "title asc", directionLabel: "A-Z" },
+  { label: "Title", value: "title desc", directionLabel: "Z-A" },
+  { label: "Vendor", value: "vendor asc", directionLabel: "A-Z" },
+  { label: "Vendor", value: "vendor desc", directionLabel: "Z-A" },
+  { label: "Inventory", value: "inventory asc", directionLabel: "Low to High",},
+  { label: "Inventory", value: "inventory desc", directionLabel: "High to Low",},
+  { label: "Created", value: "createdAt asc", directionLabel: "Oldest first",},
+  { label: "Created", value: "createdAt desc", directionLabel: "Newest first",},
+];
 
-  const { selectedResources, allResourcesSelected, handleSelectionChange } =  useIndexResourceState(products);
-  // const [linke, setLinke] = useState("");
-  // const [statuss, setStatuss] = useState("");
-  // const [webhookError, setWebhookError] = useState("");
+const { selectedResources, allResourcesSelected, handleSelectionChange } =  useIndexResourceState(products);
 
 const handleVideo = async (ids) => {
   try {
     const inputIds = Array.isArray(ids) ? ids : selectedResources;
     const idsOnly = inputIds.map((id) => id.split("/").pop());
     setIsVideoLoading(true);
-
     const updatedProducts = [];
     const erroredProducts = [];
 
@@ -451,10 +397,7 @@ const handleVideo = async (ids) => {
 
         const data = await response.json();
         console.log(data, "data for product--------------" + id);
-        const updated = Array.isArray(data.updateProducts)
-          ? data.updateProducts[0]
-          : data.updateProducts;
-
+        const updated = Array.isArray(data.updateProducts) ? data.updateProducts[0]: data.updateProducts;
 
         if (updated) {
           updatedProducts.push(data);
@@ -462,7 +405,6 @@ const handleVideo = async (ids) => {
           fetchProducts(currentCursor ?? null, "next");
           shopify.toast.show(`Video generated for ${updated.productTitle || "product"}`, { isError: false });
         }
-
       } catch (error) {
         console.error("Error fetching video for product", id, error);
         erroredProducts.push(id);
@@ -485,7 +427,6 @@ const handleVideo = async (ids) => {
         { isError: false }
       );
     }
-
   } catch (error) {
     console.error("Error fetching video:", error);
     shopify.toast.show(`Error: ${error.message}`, { isError: true });
@@ -495,355 +436,206 @@ const handleVideo = async (ids) => {
   }
 };
 
-//   const handleVideo = async (ids) => {
-//     try {
-//       console.log(ids, "ids--------");
-//       console.log(selectedResources, "selectedResources--------");
-//       const inputIds = Array.isArray(ids) ? ids : selectedResources;
-//       console.log(inputIds, "inputIds--------");
-//       setIsVideoLoading(true);
-//       const idsOnly = inputIds.map((id) => {
-//         const parts = id.split("/");
-//         return parts[parts.length - 1];
-//       });
-//       const response = await fetch(`/api/get-video`, {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify(idsOnly),
-//       });
-//       console.log(response, "response-----");
-//       if (!response.ok) {
-//         const errorData = await response.json();
-//         throw new Error(errorData.error || "Something went wrong");
-//       }
-//       const data = await response.json();
-//       console.log(data, "data-----data frontend");
+const promotedBulkActions = [
+  {
+    content: "Generate Youtube Video",
+    onAction: handleVideo,
+    disabled: isVideoLoading || selectedResources.length === 0,
+    loading: isVideoLoading,
+  },
+];
 
-// // response example 
-// // const newRes = {
-// //     "success": true,
-// //     "message": "All products updated successfully",
-// //     "data": [
-// //         {
-// //             "data": {
-// //                 "productUpdate": {
-// //                     "product": {
-// //                         "id": "gid://shopify/Product/9817987940645",
-// //                         "title": "Enya Nova Go Acoustic",
-// //                         "tags": [
-// //                             "youtubevideo"
-// //                         ]
-// //                     },
-// //                     "userErrors": []
-// //                 },
-// //                 "metafieldsSet": {
-// //                     "metafields": [
-// //                         {
-// //                             "id": "gid://shopify/Metafield/64017908171045",
-// //                             "namespace": "custom",
-// //                             "key": "youtube_demo_video",
-// //                             "value": "https://youtube.com/embed/JRSF6FHmxhI"
-// //                         },
-// //                         {
-// //                             "id": "gid://shopify/Metafield/64017908203813",
-// //                             "namespace": "custom",
-// //                             "key": "youtube_demo_summary",
-// //                             "value": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance."
-// //                         },
-// //                         {
-// //                             "id": "gid://shopify/Metafield/73210663993637",
-// //                             "namespace": "custom",
-// //                             "key": "video_source",
-// //                             "value": "AUTO"
-// //                         },
-// //                         {
-// //                             "id": "gid://shopify/Metafield/64017908236581",
-// //                             "namespace": "custom",
-// //                             "key": "youtube_demo_highlights",
-// //                             "value": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
-// //                         }
-// //                     ],
-// //                     "userErrors": []
-// //                 }
-// //             },
-// //             "extensions": {
-// //                 "cost": {
-// //                     "requestedQueryCost": 20,
-// //                     "actualQueryCost": 20,
-// //                     "throttleStatus": {
-// //                         "maximumAvailable": 2000,
-// //                         "currentlyAvailable": 1980,
-// //                         "restoreRate": 100
-// //                     }
-// //                 }
-// //             }
-// //         },
-// //         {
-// //             "data": {
-// //                 "productUpdate": {
-// //                     "product": {
-// //                         "id": "gid://shopify/Product/9817988006181",
-// //                         "title": "Epiphone Thunderbird Bass",
-// //                         "tags": [
-// //                             "youtubevideo"
-// //                         ]
-// //                     },
-// //                     "userErrors": []
-// //                 },
-// //                 "metafieldsSet": {
-// //                     "metafields": [
-// //                         {
-// //                             "id": "gid://shopify/Metafield/63631010365733",
-// //                             "namespace": "custom",
-// //                             "key": "youtube_demo_video",
-// //                             "value": "https://youtube.com/embed/b4Oq653XoYM"
-// //                         },
-// //                         {
-// //                             "id": "gid://shopify/Metafield/63631010398501",
-// //                             "namespace": "custom",
-// //                             "key": "youtube_demo_summary",
-// //                             "value": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair."
-// //                         },
-// //                         {
-// //                             "id": "gid://shopify/Metafield/64913749082405",
-// //                             "namespace": "custom",
-// //                             "key": "video_source",
-// //                             "value": "AUTO"
-// //                         },
-// //                         {
-// //                             "id": "gid://shopify/Metafield/63631010431269",
-// //                             "namespace": "custom",
-// //                             "key": "youtube_demo_highlights",
-// //                             "value": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
-// //                         }
-// //                     ],
-// //                     "userErrors": []
-// //                 }
-// //             },
-// //             "extensions": {
-// //                 "cost": {
-// //                     "requestedQueryCost": 20,
-// //                     "actualQueryCost": 20,
-// //                     "throttleStatus": {
-// //                         "maximumAvailable": 2000,
-// //                         "currentlyAvailable": 1980,
-// //                         "restoreRate": 100
-// //                     }
-// //                 }
-// //             }
-// //         }
-// //     ],
-// //     "updateProducts": [
-// //         {
-// //             "shop": "workflow-dev1.myshopify.com",
-// //             "productId": "9817987940645",
-// //             "productTitle": "Enya Nova Go Acoustic",
-// //             "videoUrl": "https://youtube.com/embed/JRSF6FHmxhI",
-// //             "source_method": "AUTO",
-// //             "aiSummary": "The Enya Nova Go Acoustic Plus is a compact, travel-friendly carbon fiber guitar with built-in effects, making it perfect for musicians on the go or performers in intimate settings. Its sparkling colors and unique soundhole design stand out visually, while the onboard effects (acoustic, chorus, delay, fusion) add versatility to your playing experience. Durable, lightweight, and stylish, it's ideal for both practice and performance.",
-// //             "highlights": "[{\"label\":\"Specs overview\",\"timestamp\":\"1:07\"},{\"label\":\"Built-in effects demo\",\"timestamp\":\"2:33\"},{\"label\":\"Clean acoustic tone\",\"timestamp\":\"2:48\"},{\"label\":\"Reverb effect demo\",\"timestamp\":\"3:08\"},{\"label\":\"Delay effect demo\",\"timestamp\":\"3:28\"},{\"label\":\"Fusion effect demo\",\"timestamp\":\"3:48\"}]"
-// //         },
-// //         {
-// //             "shop": "workflow-dev1.myshopify.com",
-// //             "productId": "9817988006181",
-// //             "productTitle": "Epiphone Thunderbird Bass",
-// //             "videoUrl": "https://youtube.com/embed/b4Oq653XoYM",
-// //             "source_method": "AUTO",
-// //             "aiSummary": "The Epiphone Thunderbird Vintage Pro IV delivers classic rock power and vintage style, with punchy humbuckers and a comfortable neck-through design. This demo showcases its iconic growl, versatile tones, and impressive build quality—perfect for players seeking a bold, reliable bass with historic flair.",
-// //             "highlights": "[{\"label\":\"Clean tone demo\",\"timestamp\":\"1:09\"},{\"label\":\"Pickup blend demonstration\",\"timestamp\":\"2:30\"}]"
-// //         }
-// //     ]
-// // }
-
-
-//       if (response.status === 206) {
-//         console.log("partial success");
-//         const erroredProducts = data.erroredProducts
-//           .map((product) => product.title)
-//           .join(", ");
-//         console.log(data.erroredProducts, "erroredProducts", erroredProducts);
-//         shopify.toast.show(
-//           `Coundn't find a suitable video for ${erroredProducts}`,
-//           {
-//             isError: false,
-//           },
-//         );
-//       } else {
-//         const updatedCount = idsOnly.length;
-//         shopify.toast.show(
-//           `Video generated for ${updatedCount} product${updatedCount > 1 ? "s" : ""}`,
-//           {
-//             isError: false,
-//           },
-//         );
-//       }
-//     } catch (error) {
-//       console.error("Error fetching video:", error);
-//       shopify.toast.show(` Error: ${error.message}`, { isError: true });
-//     } finally {
-//       setIsVideoLoading(false);
-//       fetchProducts(currentCursor ?? null, "next");
-//     }
-//   };
-
-  const promotedBulkActions = [
-    {
-      content: "Generate Youtube Video",
-      onAction: handleVideo,
-      disabled: isVideoLoading || selectedResources.length === 0,
-      loading: isVideoLoading,
-    },
-  ];
-
-  const handleDeleteVideo = async (product) => {
-    setDeleteLoading(true);
-    try {
-      const res = await fetch(`/api/delete-metafield`, {
-        method: "POST",
-        body: JSON.stringify({
-          productId: product.id,
-          tags: product.tags,
-        }),
-        headers: { "Content-Type": "application/json" },
-      });
-      const result = await res.json();
-      if (result.success) {
-        shopify.modal.hide("delete-modal");
-        shopify.modal.hide("demo-modal");
-        setDeleteLoading(false);
-        fetchProducts(currentCursor ?? null, "next");
-        shopify.toast.show(`Video deleted for ${product.title}`);
-      }
-    } catch (error) {
-      shopify.modal.hide("demo-modal");
+const handleDeleteVideo = async (product) => {
+  setDeleteLoading(true);
+  try {
+    const res = await fetch(`/api/delete-metafield`, {
+      method: "POST",
+      body: JSON.stringify({
+        productId: product.id,
+        tags: product.tags,
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await res.json();
+    if (result.success) {
       shopify.modal.hide("delete-modal");
+      shopify.modal.hide("demo-modal");
       setDeleteLoading(false);
-      console.error("Failed to delete metafield:", error);
+      fetchProducts(currentCursor ?? null, "next");
+      shopify.toast.show(`Video deleted for ${product.title}`);
     }
-  };
+  } catch (error) {
+    shopify.modal.hide("demo-modal");
+    shopify.modal.hide("delete-modal");
+    setDeleteLoading(false);
+    console.error("Failed to delete metafield:", error);
+  }
+};
 
-  const handleEditVideo = async (product, videoLink, radioValue) => {
-    if (!videoLink || videoLink.trim() === "") {
-      setEditError("Video link cannot be empty.");
-      return;
+const handleEditVideo = async (product, videoLink, radioValue) => {
+  if (!videoLink || videoLink.trim() === "") {
+    setEditError("Video link cannot be empty.");
+    return;
+  }
+  const trimmedLink = videoLink.trim();
+
+  const youtubeRegex =
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = trimmedLink.match(youtubeRegex);
+
+  if (!match || match[1].length !== 11) {
+    setEditError("Please enter a valid YouTube video link.");
+    return;
+  }
+  const videoId = match[1];
+  try {
+    setEditIsLoading(true);
+    const res = await fetch(`/api/update-metafield`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: product.id,
+        link: trimmedLink,
+        videoId: videoId,
+        title: product.title,
+        vendor: product.vendor,
+        product_type: product.productType,
+        autoGenerateornot: radioValue[0],
+        // summary: editVideoSummary,
+        // highlights: editVideoHighlights,
+      }),
+    });
+    if (!res.ok) {
+      setEditError("The url is not valid");
     }
-    const trimmedLink = videoLink.trim();
-
-    const youtubeRegex =
-      /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = trimmedLink.match(youtubeRegex);
-
-    if (!match || match[1].length !== 11) {
-      setEditError("Please enter a valid YouTube video link.");
-      return;
-    }
-    const videoId = match[1];
-    try {
-      setEditIsLoading(true);
-      const res = await fetch(`/api/update-metafield`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: product.id,
-          link: trimmedLink,
-          videoId: videoId,
-          title: product.title,
-          vendor: product.vendor,
-          product_type: product.productType,
-          autoGenerateornot: radioValue[0],
-          // summary: editVideoSummary,
-          // highlights: editVideoHighlights,
-        }),
+    const result = await res.json();
+    if (result.success) {
+      setEditError("");
+      fetchProducts(currentCursor ?? null, "next");
+      shopify.toast.show("Video link updated successfully", {
+        isError: false,
       });
-      //  if (radioValue[0] === "manual") {
-      //     requestBody.summary = editVideoSummary;
-      //     requestBody.highlights = editVideoHighlights;
-      //   }
+      shopify.modal.hide("edit-modal");
+      shopify.modal.hide("demo-modal");
+      setModalProduct(null);
+    } else {
+      setEditError("The url is not valid");
+    }
+  } catch (err) {
+    console.error("Update failed:", err);
+    setEditError("Failed to update video. Please try again.");
+  } finally {
+    setEditIsLoading(false);
+  }
+};
 
-      if (!res.ok) {
-        setEditError("The url is not valid");
-      }
-      const result = await res.json();
-      if (result.success) {
-        setEditError("");
-        fetchProducts(currentCursor ?? null, "next");
-        shopify.toast.show("Video link updated successfully", {
-          isError: false,
+const validateYouTubeVideo = async (videoLink) => {
+  const trimmedLink = videoLink.trim();
+  // const youtubeRegex =
+  //   /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const youtubeRegex = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?![a-zA-Z0-9_-])/;
+
+  const match = trimmedLink.match(youtubeRegex);
+
+  if (!trimmedLink || !match || match[1].length !== 11) {
+    return { success: false, message: "Please enter a valid YouTube video link." };
+  }
+
+  const videoId = match[1];
+  console.log(videoId,"videoId----")
+
+  try {
+    const validUrl = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+    );
+
+    console.log(validUrl,"validUrl----")
+    if (!validUrl.ok) {
+      return { success: false, message: "This YouTube video does not exist or is private." };
+    }
+
+    return { success: true, videoId, trimmedLink };
+  } catch (error) {
+    console.error("YouTube validation error:", error);
+    return { success: false, message: "Could not verify video. Please try again." };
+  }
+};
+
+const [appliedVideoLink, setAppliedVideoLink] = useState(null);
+const [isApplied, setIsApplied] = useState(false);
+const mainVideo = appliedVideoLink  ?? modalProduct?.extendedInfo?.find((v) => v.isMain)?.videoUrl;
+const otherVideos = modalProduct?.extendedInfo?.map((v) => v.videoUrl) || [];
+const allVideos = otherVideos;
+const [selectedVideo, setSelectedVideo] = useState(mainVideo);
+
+const activeVideoSummary = useMemo(() => {
+  return modalProduct?.extendedInfo?.find(
+    (info) => info.videoUrl === selectedVideo
+  )?.aiSummary || "";
+}, [modalProduct, selectedVideo]);
+
+const [currentIndex, setCurrentIndex] = useState(0);
+const [videoMeta, setVideoMeta] = useState(null);
+const handlePrev = () => { if (currentIndex > 0) setCurrentIndex(currentIndex - 1);};
+const handleNext = () => { if (currentIndex < allVideos.length - 3) setCurrentIndex(currentIndex + 1);};
+useEffect(() => {
+  if (mainVideo) {setSelectedVideo(mainVideo);}
+}, [mainVideo]);
+
+useEffect(() => {
+  if (radioValue[0] === "auto") {
+    // Reset to original auto main video when switching back
+    const autoMain = modalProduct?.extendedInfo?.find((v) => v.isMain)?.videoUrl;
+    if (autoMain) {
+      setSelectedVideo(autoMain);
+      setAppliedVideoLink(null); // clear manual override
+      setIsApplied(false);
+    }
+  }
+}, [radioValue, modalProduct]);
+
+useEffect(() => {
+  if (selectedVideo) {
+    const match = selectedVideo.match(/(?:v=|embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    const videoId = match ? match[1] : null;
+    if (videoId) {
+      fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+        .then((res) => res.json())
+        .then((data) => {
+          setVideoMeta({
+            title: data.title,
+            channel: data.author_name,
+          });
+        })
+        .catch((err) => {
+          console.error("Failed to fetch video metadata:", err);
+          setVideoMeta(null);
         });
-        shopify.modal.hide("edit-modal");
-        shopify.modal.hide("demo-modal");
-        setModalProduct(null);
-      } else {
-        setEditError("The url is not valid");
-      }
-    } catch (err) {
-      console.error("Update failed:", err);
-      setEditError("Failed to update video. Please try again.");
-    } finally {
-      setEditIsLoading(false);
     }
-  };
-
-  const validateYouTubeVideo = async (videoLink) => {
-    const trimmedLink = videoLink.trim();
-    const youtubeRegex =
-      /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = trimmedLink.match(youtubeRegex);
-
-    if (!trimmedLink || !match || match[1].length !== 11) {
-      return { success: false, message: "Please enter a valid YouTube video link." };
-    }
-
-    const videoId = match[1];
-
-    try {
-      const validUrl = await fetch(
-        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-      );
-
-      if (!validUrl.ok) {
-        return { success: false, message: "This YouTube video does not exist or is private." };
-      }
-
-      return { success: true, videoId, trimmedLink };
-    } catch (error) {
-      console.error("YouTube validation error:", error);
-      return { success: false, message: "Could not verify video. Please try again." };
-    }
-  };
-
-
-  const [appliedVideoLink, setAppliedVideoLink] = useState(null);
-  const [isApplied, setIsApplied] = useState(false);
+  }
+}, [selectedVideo]);
 
 const handleBuyPlan = () => {
-   console.log(shopDomain, "shopDomain");
-       if (shopDomain) {
+    if (shopDomain) {
       const shopName = shopDomain.replace(".myshopify.com", "");
-          window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid-test/pricing_plans`
+      window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid-test/pricing_plans`
     }
 }
-  return (
+
+return (
     <>
     {!findCharge && pageShow? (
- <Page title="Subscription Required">
-    <Banner
-      title="No active subscription found"
-      status="critical"
-      action={{
-    content: "Buy Plan",
-    onAction: handleBuyPlan
-  }}
-    >
-      <p>You must complete your subscription to use this app.</p>
-    </Banner>
-  </Page>
-
+    <Page title="Subscription Required">
+        <Banner title="No active subscription found" status="critical" action={{
+          content: "Buy Plan",
+          onAction: handleBuyPlan
+        }}> 
+          <p>You must complete your subscription to use this app.</p>
+        </Banner>
+    </Page>
     ):(
     pageShow && (
-<Page title="Product Table with YouTube URLs" fullWidth>
+    <Page title="Product Table with YouTube URLs" fullWidth>
           <Layout>
             <Layout.Section>
               <Card padding="0">
@@ -880,13 +672,8 @@ const handleBuyPlan = () => {
                 />
                 {isVideoLoading && (
                   <div style={{ textAlign: "center", padding: "10px 0" }}>
-                    <Spinner
-                      size="small"
-                      accessibilityLabel="Loading AI video generation"
-                    />
-                    <Text variant="bodyMd" alignment="center">
-                      Generating videos...
-                    </Text>
+                    <Spinner size="small" accessibilityLabel="Loading AI video generation" />
+                    <Text variant="bodyMd" alignment="center"> Generating videos...</Text>
                   </div>
                 )}
                 <IndexTable
@@ -921,23 +708,26 @@ const handleBuyPlan = () => {
                     { title: "Inventory" },
                     { title: "Type" },
                     { title: "Video Source" },
-                    // { title: "Video Status" },
-                    // { title: "Category" },
                     { title: "Vendor" },
                     { title: "" }
                   ]}
                 >
                   {products.map((product, index) => {
-                    const variant = product.variants?.edges?.[0]?.node;
-                    const quantity = variant?.inventoryQuantity ?? "-";
-                    const tracked = variant?.inventoryItem?.tracked;
+                    const totalInventory = product?.totalInventory ?? null;
+                    const tracked = product?.tracksInventory;
+                    const variantCount = product?.variantsCount?.count ?? 0;
                     let inventoryStatus = "-";
+
                     if (tracked === false) {
-                      inventoryStatus = "Not Tracked";
-                    } else if (quantity === 0) {
-                      inventoryStatus = "Out of Stock";
-                    } else if (quantity > 0) {
-                      inventoryStatus = `${quantity} In Stock`;
+                      inventoryStatus = "Inventory not Tracked";
+                    } else if (totalInventory === 0) {
+                      inventoryStatus = variantCount > 1
+                        ? `0 in stock for ${variantCount} variants`
+                        : "Out of stock";
+                    } else if (totalInventory > 0) {
+                      inventoryStatus = variantCount > 1
+                        ? `${totalInventory} in stock for ${variantCount} variants`
+                        : `${totalInventory} in stock`;
                     }
                     const videoSource =
                       product?.video_source?.value === "AUTO"
@@ -1046,7 +836,20 @@ const handleBuyPlan = () => {
                            </InlineStack>
                           )}
                         </IndexTable.Cell>
-                        <IndexTable.Cell>{inventoryStatus}</IndexTable.Cell>
+                        {/* <IndexTable.Cell>{inventoryStatus}</IndexTable.Cell> */}
+                        <IndexTable.Cell>
+                          {inventoryStatus?.toLowerCase().startsWith("0 in stock") ||
+                          inventoryStatus?.toLowerCase().startsWith("out of stock") ? (
+                            <Text variant="bodySm" as="span">
+                              <span style={{ color: "#881919", fontWeight: 500 }}>
+                                {inventoryStatus.split(" ")[0]} {inventoryStatus.split(" ")[1]} {inventoryStatus.split(" ")[2]}
+                              </span>{" "}
+                              {inventoryStatus.split(" ").slice(3).join(" ")}
+                            </Text>
+                          ) : (
+                            <Text variant="bodySm" as="span">{inventoryStatus}</Text>
+                          )}
+                        </IndexTable.Cell>
                         <IndexTable.Cell>
                           {product?.productType}
                         </IndexTable.Cell>
@@ -1065,6 +868,10 @@ const handleBuyPlan = () => {
                               }
                               .Polaris-IndexTable__TableRow--hovered .preview-button-wrapper .Polaris-Button {
                                 opacity: 1;
+                              }
+                              .automatic-block{ position: relative }
+                              .automatic-block:after{  content: "";  width:100%;  left:0;  top:0;  height:100%;  
+                                position: absolute;  z-index: 1;  right: 0;  bottom: 0;  pointer-events: none;  background: rgba(11, 8, 8, 0.5);
                               }
                             `}
                           </style>
@@ -1090,32 +897,19 @@ const handleBuyPlan = () => {
             </Layout.Section>
           </Layout>
           <Modal id="demo-modal">
-            <iframe  width="100%"  height="400" src={appliedVideoLink ?? modalProduct?.metafield?.value} />
-            {/* <iframe
-              width="100%"
-              height="400"
-              src={modalProduct?.metafield?.value}
-            ></iframe> */}
-            {/* <Box padding="400">
-              <Text variant="bodyMd" as="span">
-                {modalProduct?.summary?.value}
-              </Text>
-            </Box> */}
-            <Page>
-              <style>{`ul.Polaris-BlockStack.Polaris-BlockStack--listReset {gap: 0px;}`}</style>
+            <Box padding="300" paddingBlockStart="200">
               <FormLayout>
-                <ChoiceList
-                  title="Video link"
-                  choices={[
-                    { label: "Auto Generated", value: "auto" },
-                    { label: "Edit Manually", value: "manual" },
-                  ]}
-                  selected={radioValue}
-                  onChange={handleEditType}
-                />
-
-                {radioValue[0] === "manual" && (
-                  <InlineStack gap="200" align="start" blockAlign="start">
+                  <ActionMenu
+                    actions={[
+                      radioValue[0] === "auto"
+                        ? { content: "Switch to manual editor", onAction: () => setRadioValue(["manual"]), }
+                        : { content: "Switch to automated mode", onAction: () => setRadioValue(["auto"]),},
+                    ]}
+                  >
+                    {/* <Button disclosure="down">More actions...</Button> */}
+                  </ActionMenu>
+              {radioValue[0] === "manual" && (
+              <InlineStack gap="200" align="start" blockAlign="start">
                     <Box grow minWidth="80%">
                       <TextField
                         value={editVideoLink}
@@ -1129,31 +923,115 @@ const handleBuyPlan = () => {
                         helpText={editError ? "" : "Format Example: https://youtube.com/embed/videoId"}
                       />
                     </Box>
-
-                    {/* <Button
-                      onClick={() =>
-                        handleEditVideo(editVideo, editVideoLink, radioValue)
-                      }
-                      loading={editIsLoading}
-                    >
-                      Apply
-                    </Button> */}
-                    <Button onClick={async () => {
+                    <Button
+                      variant="primary"
+                      tone="success"
+                      onClick={async () => {
                         const result = await validateYouTubeVideo(editVideoLink);
                         if (!result.success) {
                           setEditError(result.message);
                           return;
                         }
-                        setAppliedVideoLink(result.trimmedLink); 
-                        setIsApplied(true); 
-                        setEditError("");   
-                      }}>Apply</Button>
-
+                        setAppliedVideoLink(result.trimmedLink);
+                        setIsApplied(true);
+                        setEditError("");
+                      }}
+                    >
+                      Apply
+                    </Button>
                   </InlineStack>
                 )}
-                {/* {editError && <Text tone="critical">{editError}</Text>} */}
               </FormLayout>
-              <br></br>
+            </Box>
+          
+            <div class={(radioValue[0] === "manual" && (!isApplied || appliedVideoLink === selectedVideo)) ? "automatic-block" : ""} >
+              <div id="mainvideo" >
+                <iframe width="100%"  height="400" src={selectedVideo} />
+              </div>
+              <Box padding="300">
+                <InlineGrid columns={"1fr auto"} gap="20px" alignItems="start">
+                  <div className="video-info">
+                      <Text as="p" variant="headingMd" fontWeight="bold">
+                        {videoMeta?.title || "Loading..."}
+                      </Text>
+                      <Text as="p">{videoMeta?.channel || ""}</Text>
+                  </div>
+                  
+                  {(activeVideoSummary) ? (
+                    <div style={{ position: "relative", display: "inline-block" }} className="tooltip-wrapper" >
+                      <style>
+                        {`.summary-tooltip-container { display: none;  }
+                        .tooltip-wrapper:hover .summary-tooltip-container {display: block;} `}
+                      </style>
+                      <Button icon={TextBlockIcon}>Video Summary</Button>
+                      <div className="summary-tooltip-container">
+                        <div style={{ position: "absolute",  right: "39px",  top: "calc(100% - 68px)",  width: "28px",  height: "28px",  background: "#ffffff",  border: "1px solid #dfdfdf",  transform: "rotate(314deg) scaleY(0.5)",  zIndex: -1, }}/>
+                        <div
+                          className="summary-tooltip"
+                          style={{ position: "absolute", bottom: "50px", right: "-100%", transform: "translateX(-50%)", zIndex: 10, border: "1px solid #e1e1e1", borderRadius: "5px", backgroundColor: "#fff", padding: "10px", minWidth: "200px", maxWidth: "340px", textAlign: "center"
+                          }}
+                        >
+                          <Text variant="bodyMd" as="p">
+                            {activeVideoSummary}
+                          </Text>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button icon={TextBlockIcon} onClick={()=>{
+                      generateSummary()
+                    }}>Generate summary</Button>
+                  )}
+                </InlineGrid>
+                {/* Carousel */}
+                 {radioValue[0] === "auto" && (
+                   <div className="preview-carousel" style={{ position: "relative" , marginTop: "20px" }}>
+                    <button onClick={handlePrev} disabled={currentIndex === 0}
+                      style={{  position: "absolute",  left: 0,  top: "50%",  transform: "translateY(-50%)",  zIndex: 2,  background: "white",  border: "1px solid #ccc",  cursor: "pointer",
+                      }}
+                    >
+                      ‹
+                    </button>
+                    <div style={{ display: "flex", overflow: "hidden", margin: "0 30px"}} >
+                      <div style={{  display: "flex",  transition: "transform 0.3s ease",  transform: `translateX(-${currentIndex * 33.33}%)`,  
+                      width:"100%" }}
+                      >
+                        {allVideos.filter(Boolean).map((video, index) =>{ 
+                          const videoIdMatch = video.match(
+                            /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+                          );
+                          const videoId = videoIdMatch ? videoIdMatch[1] : null;
+                          const thumbnailUrl = videoId
+                            ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+                            : null;
+                          
+                          return(
+                          <div key={"video"+ index} style={{ flex: "0 0 33.33%", padding: "0 4px", boxSizing: "border-box" }}>
+                            <div key={index}
+                              style={{
+                                border: video === selectedVideo ? "3px solid #0070f3" : "1px solid #ddd",
+                                borderRadius: "8px",
+                                overflow: "hidden",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => setSelectedVideo(video)}
+                            >
+                              <img src={thumbnailUrl} alt={`Video ${index}`} style={{ width: "100%", height: "100px", objectFit: "cover" , display:"block"}} />
+                            </div>
+                          </div>
+                        ) })}
+                      </div>
+                    </div>
+                    <button  onClick={handleNext}  disabled={currentIndex >= allVideos.length - 3}
+                      style={{  position: "absolute",  right: 0,  top: "50%",  transform: "translateY(-50%)",  zIndex: 2,  background: "white",  border: "1px solid #ccc",  cursor: "pointer",
+                      }}
+                    >
+                      ›
+                    </button>
+                  </div>
+                 )}
+              </Box>
+            <Box padding="300">
               <InlineStack wrap={false} align="end">
                 <ButtonGroup>
                   {/* <Button
@@ -1167,7 +1045,7 @@ const handleBuyPlan = () => {
                   <Button
                     variant="primary"
                     loading={editIsLoading}
-                    disabled={!isApplied ||  appliedVideoLink === modalProduct?.metafield?.value}
+                    disabled={!isApplied ||  appliedVideoLink === selectedVideo}
                     onClick={() => {
                       console.log(editVideo, editVideoLink, radioValue);
                       handleEditVideo(editVideo, editVideoLink, radioValue);
@@ -1182,106 +1060,14 @@ const handleBuyPlan = () => {
                     setIsApplied(false);
                     setEditError(""); 
                   }}>
-                    Close
+                    Cancel
                   </Button>
                 </ButtonGroup>
               </InlineStack>
-              {/* <PageActions
-                primaryAction={{
-                    content: "Update",
-                    onAction: () => handleEditVideo(editVideo, editVideoLink),
-                    loading: editIsLoading,
-                }}
-            /> */}
-            </Page>
-            <TitleBar title={modalProduct?.title || "-"}></TitleBar>
-          </Modal>
-          <Modal id="video-modal">
-            <iframe
-              width="100%"
-              height="400"
-              src={modalProduct?.metafield?.value}
-            ></iframe>
-            <Box padding="400">
-              <Text variant="bodyMd" as="span">
-                {modalProduct?.summary?.value}
-              </Text>
             </Box>
-            <TitleBar title={modalProduct?.title || "-"}></TitleBar>
-          </Modal>
-
-          <Modal id="edit-modal">
-            <TitleBar title="Edit YouTube Video"></TitleBar>
-            <Page>
-              <style>{`ul.Polaris-BlockStack.Polaris-BlockStack--listReset {gap: 0px;}`}</style>
-              <FormLayout>
-                <TextField
-                  value={editVideoLink}
-                  error={editError}
-                  onChange={(value) => {
-                    seteditVideoLink(value); 
-                    setEditError("");
-                    setIsApplied(false);  
-                  }}
-                  autoComplete="off"
-                />
-                <ChoiceList
-                  title="Video summary and highlights"
-                  choices={[
-                    { label: "Auto Generated", value: "auto" },
-                    { label: "Edit Manually", value: "manual" },
-                  ]}
-                  selected={radioValue}
-                  onChange={handleEditType}
-                />
-                {radioValue[0] === "manual" && (
-                  <BlockStack gap="300">
-                    <TextField
-                      value={editVideoSummary}
-                      onChange={(value) => {
-                        setEditVideoSummary(value);
-                      }}
-                      label="Video summary"
-                      autoComplete="off"
-                      multiline
-                    />
-                    <TextField
-                      value={editVideoHighlights}
-                      onChange={(value) => {
-                        setEditVideoHighlights(value);
-                      }}
-                      label="Video hightlights"
-                      autoComplete="off"
-                      multiline
-                    />
-                  </BlockStack>
-                )}
-              </FormLayout>
-              <br></br>
-              <InlineStack wrap={false} align="end">
-                <ButtonGroup>
-                  <Button
-                    variant="primary"
-                    loading={editIsLoading}
-                    onClick={() =>
-                      handleEditVideo(editVideo, editVideoLink, radioValue)
-                    }
-                  >
-                    Update
-                  </Button>
-                  <Button onClick={() => shopify.modal.hide("edit-modal")}>
-                    Close
-                  </Button>
-                </ButtonGroup>
-              </InlineStack>
-              {/* <PageActions
-                primaryAction={{
-                    content: "Update",
-                    onAction: () => handleEditVideo(editVideo, editVideoLink),
-                    loading: editIsLoading,
-                }}
-            /> */}
-            </Page>
+             </div>
+            <TitleBar title={(modalProduct?.title || "-" ) + " , " + (modalProduct?.vendor || "" )}>
+            </TitleBar>
           </Modal>
           <Modal id="delete-modal">
             <TitleBar title="Delete YouTubeLink"></TitleBar>
@@ -1311,9 +1097,8 @@ const handleBuyPlan = () => {
             </Page>
           </Modal>
         </Page>
-    )
+       )
     )}
-   
     </>
   );
 }
