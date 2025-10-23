@@ -569,33 +569,63 @@ export default function ProductTable() {
     }
   };
 
-  const validateYouTubeVideo = async (videoLink) => {
-    const trimmedLink = videoLink.trim();
-    const youtubeRegex =
-      /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = trimmedLink.match(youtubeRegex);
+  // const validateYouTubeVideo = async (videoLink) => {
+  //   const trimmedLink = videoLink.trim();
+  //   const youtubeRegex =
+  //     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  //   const match = trimmedLink.match(youtubeRegex);
 
-    if (!trimmedLink || !match || match[1].length !== 11) {
-      return { success: false, message: "Please enter a valid YouTube video link." };
+  //   if (!trimmedLink || !match || match[1].length !== 11) {
+  //     return { success: false, message: "Please enter a valid YouTube video link." };
+  //   }
+
+  //   const videoId = match[1];
+
+  //   try {
+  //     const validUrl = await fetch(
+  //       `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+  //     );
+
+  //     if (!validUrl.ok) {
+  //       return { success: false, message: "This YouTube video does not exist or is private." };
+  //     }
+
+  //     return { success: true, videoId, trimmedLink };
+  //   } catch (error) {
+  //     console.error("YouTube validation error:", error);
+  //     return { success: false, message: "Could not verify video. Please try again." };
+  //   }
+  // };
+
+const validateYouTubeVideo = async (videoLink) => {
+  const trimmedLink = videoLink.trim();
+  const youtubeRegex = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?![a-zA-Z0-9_-])/;
+  const match = trimmedLink.match(youtubeRegex);
+
+  if (!trimmedLink || !match || match[1].length !== 11) {
+    return { success: false, message: "Please enter a valid YouTube video link." };
+  }
+
+  const videoId = match[1];
+
+  try {
+    const validUrl = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+    );
+
+    if (!validUrl.ok) {
+      return { success: false, message: "This YouTube video does not exist or is private." };
     }
 
-    const videoId = match[1];
+    // ✅ Always return standardized embed format
+    const formattedLink = `https://youtube.com/embed/${videoId}`;
 
-    try {
-      const validUrl = await fetch(
-        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-      );
-
-      if (!validUrl.ok) {
-        return { success: false, message: "This YouTube video does not exist or is private." };
-      }
-
-      return { success: true, videoId, trimmedLink };
-    } catch (error) {
-      console.error("YouTube validation error:", error);
-      return { success: false, message: "Could not verify video. Please try again." };
-    }
-  };
+    return { success: true, videoId, trimmedLink: formattedLink };
+  } catch (error) {
+    console.error("YouTube validation error:", error);
+    return { success: false, message: "Could not verify video. Please try again." };
+  }
+};
 
 
   const [appliedVideoLink, setAppliedVideoLink] = useState(null);
@@ -936,6 +966,7 @@ const handleBuyPlan = () => {
                           setEditError(result.message);
                           return;
                         }
+                        seteditVideoLink(result.trimmedLink);
                         setAppliedVideoLink(result.trimmedLink); 
                         setIsApplied(true); 
                         setEditError("");   
