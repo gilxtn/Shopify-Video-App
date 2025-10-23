@@ -50,3 +50,13 @@ enum SourceMethod {
   AUTO
   MANUAL
 }
+
+model Prompt {
+  id        Int      @id @default(autoincrement())
+  shop      String?  // null means it's the global default
+  content   String?   // full prompt text
+  carousel  String?
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

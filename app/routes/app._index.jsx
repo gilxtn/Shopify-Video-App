@@ -711,16 +711,21 @@ const handleBuyPlan = () => {
                   ]}
                 >
                   {products.map((product, index) => {
-                    const variant = product.variants?.edges?.[0]?.node;
-                    const quantity = variant?.inventoryQuantity ?? "-";
-                    const tracked = variant?.inventoryItem?.tracked;
+                    const totalInventory = product?.totalInventory ?? null;
+                    const tracked = product?.tracksInventory;
+                    const variantCount = product?.variantsCount?.count ?? 0;
                     let inventoryStatus = "-";
+
                     if (tracked === false) {
-                      inventoryStatus = "Not Tracked";
-                    } else if (quantity === 0) {
-                      inventoryStatus = "Out of Stock";
-                    } else if (quantity > 0) {
-                      inventoryStatus = `${quantity} In Stock`;
+                      inventoryStatus = "Inventory not Tracked";
+                    } else if (totalInventory === 0) {
+                      inventoryStatus = variantCount > 1
+                        ? `0 in stock for ${variantCount} variants`
+                        : "Out of stock";
+                    } else if (totalInventory > 0) {
+                      inventoryStatus = variantCount > 1
+                        ? `${totalInventory} in stock for ${variantCount} variants`
+                        : `${totalInventory} in stock`;
                     }
                     const videoSource =
                       product?.video_source?.value === "AUTO"
@@ -823,7 +828,19 @@ const handleBuyPlan = () => {
                             </button>
                           )}
                         </IndexTable.Cell>
-                        <IndexTable.Cell>{inventoryStatus}</IndexTable.Cell>
+                        <IndexTable.Cell>
+                          {inventoryStatus?.toLowerCase().startsWith("0 in stock") ||
+                          inventoryStatus?.toLowerCase().startsWith("out of stock") ? (
+                            <Text variant="bodySm" as="span">
+                              <span style={{ color: "#881919", fontWeight: 500 }}>
+                                {inventoryStatus.split(" ")[0]} {inventoryStatus.split(" ")[1]} {inventoryStatus.split(" ")[2]}
+                              </span>{" "}
+                              {inventoryStatus.split(" ").slice(3).join(" ")}
+                            </Text>
+                          ) : (
+                            <Text variant="bodySm" as="span">{inventoryStatus}</Text>
+                          )}
+                        </IndexTable.Cell>
                         <IndexTable.Cell>
                           {product?.productType}
                         </IndexTable.Cell>

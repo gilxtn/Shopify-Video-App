@@ -68,7 +68,7 @@ export const action = async ({ request }) => {
             metafield(namespace: "custom", key: "youtube_demo_video") {
               value
             }
-              summary: metafield(namespace: "custom", key: "youtube_demo_summary") {
+            summary: metafield(namespace: "custom", key: "youtube_demo_summary") {
               value
             }
             highlights: metafield(namespace: "custom", key: "youtube_demo_highlights") {
@@ -76,6 +76,14 @@ export const action = async ({ request }) => {
             }
             video_source: metafield(namespace: "custom", key: "video_source") {
               value
+            }
+            otherVideos: metafield(namespace: "custom", key: "youtube_videos_list") {
+              value
+            }
+            totalInventory
+            tracksInventory
+            variantsCount {
+              count
             }
             variants(first: 1) {
               edges {
@@ -105,25 +113,43 @@ export const action = async ({ request }) => {
 
   const res = await admin.graphql(gqlQuery, { variables });
   const json = await res.json();
-  const arrId = json.data.products.edges.map((edge) =>
-    edge.node.id?.split("/").pop(),
-  );
+   // Convert Shopify node IDs to BigInt
+  const arrId = json.data.products.edges.map((edge) => BigInt(edge.node.id?.split("/").pop()));
 
+  // Fetch all extended info for these products
   const productExtendedInfo = await prisma.productExtendedInfo.findMany({
-    where: { productId: { in: arrId } },
+    where: { productId: { in: arrId }, shop: session.shop },
   });
 
-  const products = json.data.products.edges.map((edge) => {
-    const extendedInfo = productExtendedInfo.find(
-      (info) => info.productId == edge.node.id?.split("/").pop(),
-    );
+  // Attach all rows of extended info to each product
+  const edgesWithExtendedInfo = json.data.products.edges.map((edge) => {
+    const productId = BigInt(edge.node.id?.split("/").pop());
+    const extendedInfoRows = productExtendedInfo
+      .filter((info) => info.productId === productId)
+      .map((row) => ({
+        ...row,
+        productId: row.productId.toString(),
+        id: row.id.toString(),
+      }));
+
     return {
-      ...edge.node,
-      extendedInfo,
+      ...edge,
+      node: {
+        ...edge.node,
+        extendedInfo: extendedInfoRows,
+      },
     };
   });
-  // console.log("products", products);
-  return new Response(JSON.stringify(json.data.products), {
+
+  const responseData = {
+    ...json.data.products,
+    edges: edgesWithExtendedInfo,
+  };
+
+  // Use replacer to serialize any remaining BigInt safely
+  return new Response(JSON.stringify(responseData, (key, value) =>
+    typeof value === "bigint" ? value.toString() : value
+  ), {
     headers: { "Content-Type": "application/json" },
   });
 };
