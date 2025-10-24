@@ -1,4 +1,3 @@
-import { collapseTextChangeRangesAcrossMultipleVersions } from "typescript";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 
@@ -18,12 +17,23 @@ export const action = async ({ request }) => {
 
   // if (query) filterParts.push(`title:*${query}*`);
   if (filters?.status) filterParts.push(`status:${filters.status}`);
-  if (filters?.vendor) filterParts.push(`vendor:${filters.vendor}`);
   if (filters?.tag) filterParts.push(`tag:${filters.tag}`);
 
-  if (filters?.category) {
-    const categoryId = filters?.category?.split("/").pop();
-    filterParts.push(`category_id:${categoryId}`);
+  if (Array.isArray(filters?.vendor) && filters.vendor.length > 0) {
+    const vendorFilters = filters.vendor
+      .map((v) => `vendor:${v}`)
+      .join(" OR ");
+    filterParts.push(`(${vendorFilters})`);
+  }
+  // if (filters?.category) {
+  //   const categoryId = filters?.category?.split("/").pop();
+  //   filterParts.push(`category_id:${categoryId}`);
+  // }
+  if (Array.isArray(filters?.category) && filters.category.length > 0) {
+    const categoryFilters = filters.category
+      .map((c) => `category_id:${c.split("/").pop()}`)
+      .join(" OR ");
+    filterParts.push(`(${categoryFilters})`);
   }
   if (filters?.demoVideo === "true") {
     filterParts.push(`tag:youtubevideo`);

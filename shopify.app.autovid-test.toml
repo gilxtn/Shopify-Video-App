@@ -1,0 +1,32 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "bab53c0f56308d6b5f581b8d61b90f8a"
+name = "AutoVid TEST"
+application_url = "https://meal-asp-attract-accepts.trycloudflare.com"
+embedded = true
+handle = "autovid-test"
+
+[build]
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-04"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://tables-alcohol-amount-artistic.trycloudflare.com/auth/callback",
+  "https://tables-alcohol-amount-artistic.trycloudflare.com/auth/shopify/callback",
+  "https://tables-alcohol-amount-artistic.trycloudflare.com/api/auth/callback"
+]
+
+[app_proxy]
+url = "https://tables-alcohol-amount-artistic.trycloudflare.com/api"
+subpath = "autovid"
+prefix = "a"
+
+[pos]
+embedded = false

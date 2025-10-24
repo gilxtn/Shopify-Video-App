@@ -94,18 +94,26 @@ export const loader = async ({ request }) => {
   );
   const onboardingComplete = onboardingMetafield?.node?.value === "true";
 
-  const fetchTagsAndCategories = async () => {
+  const fetchTagsVendorsCategories = async (admin) => {
     const gql = `
       {
-        products(first: 250) {
+        productTags(first: 5000) {
           edges {
-            node {
-              tags
-              category {
-                id
-                name
-              }
-            }
+            node
+          }
+        }
+        productVendors(first: 1000) {
+          edges {
+            node
+          }
+        }
+        shop {
+          allProductCategoriesList {
+            id
+            name
+            fullName
+            level
+            isLeaf
           }
         }
       }
@@ -113,25 +121,17 @@ export const loader = async ({ request }) => {
     const response = await admin.graphql(gql);
     const json = await response.json();
 
-    const edges = json?.data?.products?.edges || [];
-    const allTags = edges.flatMap((edge) => edge.node.tags || []);
-    const uniqueTags = Array.from(new Set(allTags));
+    const tags = json?.data?.productTags?.edges?.map(e => e.node) || [];
+    const vendors = json?.data?.productVendors?.edges?.map(e => e.node) || [];
+    const categories = json?.data?.shop?.allProductCategoriesList || [];
 
-    const allCategories = edges
-      .map((edge) => edge.node.category)
-      .filter(Boolean);
-
-    const uniqueCategories = Array.from(
-      new Map(allCategories.map((cat) => [cat.id, cat])).values(),
-    );
-
-    return { tags: uniqueTags, categories: uniqueCategories };
+    return { tags, vendors, categories };
   };
 
-  const { tags, categories } = await fetchTagsAndCategories();
+  const { tags, vendors, categories } = await fetchTagsVendorsCategories(admin);
 
   return new Response(
-    JSON.stringify({ tags, categories, onboardingComplete , shopDomain, findCharge}),
+    JSON.stringify({ tags, categories, vendors,  onboardingComplete , shopDomain, findCharge}),
     {
       headers: { "Content-Type": "application/json" },
     },
@@ -140,7 +140,10 @@ export const loader = async ({ request }) => {
 
 export default function ProductTable() {
   const fetcher = useFetcher();
-  const { tags, categories, onboardingComplete , shopDomain, findCharge} = useLoaderData();
+  const { tags, categories, vendors, onboardingComplete , shopDomain, findCharge} = useLoaderData();
+  console.log(tags,"tags");
+  console.log(vendors,"vendors");
+  console.log(categories,"categories");
   const [products, setProducts] = useState([]);
   const [pageInfo, setPageInfo] = useState({ hasNextPage: false });
   const [lastCursor, setLastCursor] = useState(null);
@@ -149,8 +152,8 @@ export default function ProductTable() {
   const [currentCursor, setCurrentCursor] = useState(null);
   const [sortSelected, setSortSelected] = useState(["createdAt desc"]);
   const [demoVideo, setDemoVideo] = useState(null);
-  const [category, setCategory] = useState(null);
-  const [vendor, setVendor] = useState(null);
+  const [category, setCategory] = useState([]);
+  const [vendor, setVendor] = useState([]);
   const [status, setStatus] = useState(null);
   const [tag, setTag] = useState(null);
   const [isProductLoading, setIsProductLoading] = useState(false);
@@ -184,8 +187,7 @@ export default function ProductTable() {
 
   useEffect(() => {
     if (radioValue[0] === "auto") {
-      // Reset to original auto main video when switching back
-      const autoMain = modalProduct?.extendedInfo?.find((v) => v.isMain)?.videoUrl;
+      const autoMain = modalProduct?.metafield?.value || null;
       if (autoMain) {
         setAppliedVideoLink(null); // clear manual override
         setIsApplied(false);
@@ -244,16 +246,7 @@ export default function ProductTable() {
     } else {
       fetchProducts(null, "next");
     }
-  }, [
-    demoVideo,
-    category,
-    vendor,
-    status,
-    tag,
-    sortSelected,
-    selectedTab,
-    queryValue,
-  ]);
+  }, [ demoVideo, category, vendor, status, tag, sortSelected, selectedTab, queryValue]);
 
   useEffect(() => {
     if (fetcher.data) {
@@ -269,12 +262,7 @@ export default function ProductTable() {
     }
   }, [fetcher.data]);
 
-  const [itemStrings, setItemStrings] = useState([
-    "All",
-    "Active",
-    "Draft",
-    "Archived",
-  ]);
+  const [itemStrings, setItemStrings] = useState(["All","Active","Draft","Archived",]);
 
   const tabs = itemStrings.map((item, index) => ({
     content: item,
@@ -293,20 +281,20 @@ export default function ProductTable() {
       onRemove: () => setDemoVideo(null),
     });
   }
-  if (category) {
-    const selectedCategory = categories.find((cat) => cat.id === category);
-
+  if (category && category.length > 0) {
+     const selectedCategoryNames = category.map((id) => categories.find((cat) => cat.id === id)?.name).filter(Boolean)
+    .join(", ");
     appliedFilters.push({
       key: "category",
-      label: `Category: ${selectedCategory?.name || "Unknown"}`,
-      onRemove: () => setCategory(null),
+      label: `Category: ${selectedCategoryNames}`,
+      onRemove: () => setCategory([]),
     });
   }
-  if (vendor) {
+  if (vendor && vendor.length > 0) {
     appliedFilters.push({
       key: "vendor",
       label: `Vendor: ${vendor}`,
-      onRemove: () => setVendor(null),
+      onRemove: () => setVendor([]),
     });
   }
   if (status) {
@@ -347,27 +335,30 @@ export default function ProductTable() {
       label: "Category",
       filter: (
         <ChoiceList
+         titleHidden
           title="Category"
-          choices={categories.map((cat) => ({
-            label: cat?.name,
-            value: cat?.id,
-          }))}
-          selected={[category]}
-          onChange={(selected) => setCategory(selected[0])}
+          choices={categories.map((cat) => ({ label: cat.name, value: cat.id }))}
+          selected={category}
+          onChange={(selected) => setCategory(selected)}
+          allowMultiple
         />
       ),
+        shortcut: true,
     },
     {
       key: "vendor",
       label: "Vendor",
       filter: (
-        <TextField
-          label="Vendor"
-          value={vendor || ""}
-          onChange={(value) => setVendor(value)}
-          autoComplete="off"
+        <ChoiceList
+          titleHidden
+          title="Vendor"
+          choices={vendors.map((v) => ({ label: v, value: v }))}
+          selected={vendor || []} 
+          onChange={(selected) => setVendor(selected)}
+          allowMultiple
         />
       ),
+       shortcut: true,
     },
     {
       key: "status",
@@ -422,9 +413,6 @@ export default function ProductTable() {
   ];
 
   const { selectedResources, allResourcesSelected, handleSelectionChange } =  useIndexResourceState(products);
-  // const [linke, setLinke] = useState("");
-  // const [statuss, setStatuss] = useState("");
-  // const [webhookError, setWebhookError] = useState("");
 
   const handleVideo = async (ids) => {
     try {
@@ -580,7 +568,7 @@ export default function ProductTable() {
     }
   };
 
-  // const validateYouTubeVideo = async (videoLink) => {
+ // const validateYouTubeVideo = async (videoLink) => {
   //   const trimmedLink = videoLink.trim();
   //   const youtubeRegex =
   //     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -638,9 +626,8 @@ const validateYouTubeVideo = async (videoLink) => {
   }
 };
 
-
-  const [appliedVideoLink, setAppliedVideoLink] = useState(null);
-  const [isApplied, setIsApplied] = useState(false);
+const [appliedVideoLink, setAppliedVideoLink] = useState(null);
+const [isApplied, setIsApplied] = useState(false);
 
 const handleBuyPlan = () => {
    console.log(shopDomain, "shopDomain");
@@ -652,22 +639,21 @@ const handleBuyPlan = () => {
   return (
     <>
     {!findCharge && pageShow? (
- <Page title="Subscription Required">
-    <Banner
-      title="No active subscription found"
-      status="critical"
-      action={{
-    content: "Buy Plan",
-    onAction: handleBuyPlan
-  }}
-    >
-      <p>You must complete your subscription to use this app.</p>
-    </Banner>
-  </Page>
-
+    <Page title="Subscription Required">
+        <Banner
+          title="No active subscription found"
+          status="critical"
+          action={{
+        content: "Buy Plan",
+        onAction: handleBuyPlan
+      }}
+        >
+          <p>You must complete your subscription to use this app.</p>
+        </Banner>
+    </Page>
     ):(
     pageShow && (
-<Page title="Product Table with YouTube URLs" fullWidth>
+    <Page title="Product Table with YouTube URLs" fullWidth>
           <Layout>
             <Layout.Section>
               <Card padding="0">
@@ -676,8 +662,8 @@ const handleBuyPlan = () => {
                   appliedFilters={appliedFilters}
                   onClearAll={() => {
                     setDemoVideo(null);
-                    setCategory(null);
-                    setVendor(null);
+                    setCategory([]);
+                    setVendor([]);
                     setStatus(null);
                     setTag(null);
                     setQueryValue("");
