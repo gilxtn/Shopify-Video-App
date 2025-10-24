@@ -21,10 +21,23 @@ const shopify = shopifyApp({
      afterAuth: async ({ session, admin }) => {
       console.log("App installed for shop:", session.shop);
         try {
-          
+          const existing = await prisma.prompt.findFirst({
+              where: { shop: session.shop }
+          });
+          if (!existing) {
+            await prisma.prompt.create({
+              data: {
+                shop: session.shop,
+                content: ""
+              }
+            });
+            console.log(`Prompt entry created for shop: ${session.shop}`);
+          } else {
+	          console.log(`Prompt entry already exists for shop: ${session.shop}`);
+	        }
         }
-        catch{
-
+        catch (err){
+          console.error("Error creating prompt entry:", err);
         }
       }
     },

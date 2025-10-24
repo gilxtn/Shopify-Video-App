@@ -141,9 +141,6 @@ export const loader = async ({ request }) => {
 export default function ProductTable() {
   const fetcher = useFetcher();
   const { tags, categories, vendors, onboardingComplete , shopDomain, findCharge} = useLoaderData();
-  console.log(tags,"tags");
-  console.log(vendors,"vendors");
-  console.log(categories,"categories");
   const [products, setProducts] = useState([]);
   const [pageInfo, setPageInfo] = useState({ hasNextPage: false });
   const [lastCursor, setLastCursor] = useState(null);
