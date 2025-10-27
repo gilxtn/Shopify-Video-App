@@ -7,15 +7,69 @@ import {
   Page,
   Text,
   BlockStack,
+  Button
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
+import prisma from "../db.server";
+ import fs from "fs";
+ import { useFetcher } from "@remix-run/react";
+import { authenticate } from "../shopify.server";
+
+export const loader = async ({ request }) => {
+  // Perform backup of the database
+  return null;
+};
+
+export const action = async ({ request }) => {
+  const { session } = await authenticate.admin(request);
+  const shopDomain = session.shop;
+
+  // Fetch data from ProductExtendedInfo
+  const data = await prisma.VideoPlayCount.findMany();
+
+  // Save to local file (inside /backups folder)
+ 
+  const filePath = `./backups/VideoPlayCount${shopDomain}_${Date.now()}.json`;
+  fs.mkdirSync("./backups", { recursive: true });
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify(
+      data,
+      (_, value) => (typeof value === "bigint" ? value.toString() : value),
+      2
+    )
+  );
+
+
+  console.log(`✅ Backup created at ${filePath} with ${data.length} records`);
+
+  return new Response(JSON.stringify({ success: true, count: data.length }), {
+    headers: { "Content-Type": "application/json" },
+  });
+};
+
 
 export default function AdditionalPage() {
+    const fetcher = useFetcher();
   return (
     <Page>
       <TitleBar title="Additional page" />
       <Layout>
+         
         <Layout.Section>
+          <Button
+          onClick={() => {
+            fetcher.submit({}, { method: "post" });
+          }}
+          loading={fetcher.state !== "idle"}
+        >
+          Do backup
+        </Button>
+        {fetcher.data?.success && (
+          <Text variant="bodyMd" tone="success">
+            ✅ Backup completed — {fetcher.data.count} rows exported
+          </Text>
+        )}
           <Card>
             <BlockStack gap="300">
               <Text as="p" variant="bodyMd">

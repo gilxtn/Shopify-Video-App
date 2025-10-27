@@ -58,3 +58,4 @@ Output format when a video is found:
 
 Only return this error format if the main video is confirmed to be unavailable:
 { "error": "YouTube URL not found for this video." }`;
+
