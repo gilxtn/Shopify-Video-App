@@ -101,18 +101,30 @@ export const action = async ({ request }) => {
     }
         
         updateProducts.push(productInfo);
-        await prisma.ProductExtendedInfo.upsert({
-          where: { productId: productInfo.productId },
-          update: {
-            productTitle: productInfo.productTitle,
-            videoUrl: productInfo.videoUrl,
-            source_method: productInfo.source_method,
-            aiSummary: productInfo.aiSummary,
-            highlights: productInfo.highlights,
-            shop: productInfo.shop,
+
+         // 1. Delete all old videos for this product + shop
+        await prisma.productExtendedInfo.deleteMany({
+          where: {
+            productId: BigInt(productId),
+            shop,
           },
-          create: productInfo,
         });
+        
+         // 2. Insert main video (true) from youtube_demo_video metafield
+        await prisma.productExtendedInfo.create({
+          data: {
+            shop,
+            productId: BigInt(productId),
+            productTitle: item.data.productUpdate?.product?.title,
+            videoUrl: videoUrl?.value,
+            aiSummary: aiSummary?.value,
+            highlights: highlights?.value,
+            source_method: "AUTO",
+            isMain: true,
+          },
+        });
+
+
       }
     });
 

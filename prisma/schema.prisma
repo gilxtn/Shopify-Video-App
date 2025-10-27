@@ -28,22 +28,58 @@ model Session {
 model VideoPlayCount {
   productId BigInt
   videoUrl  String
-  shop      String? 
-  playCount Int    @default(0)
+  playCount Int     @default(0)
+  shop      String?
 
   @@id([productId, videoUrl])
 }
 
+model VideoPageView {
+  id         Int     @id @default(autoincrement())
+  shop       String
+  productId  BigInt
+  pageType   String
+  pageHandle String?
+  viewCount  Int     @default(0)
+
+  @@unique([shop, productId, pageType, pageHandle])
+}
+
+model Activity {
+  id         Int          @id @default(autoincrement())
+  shop       String
+  productId  BigInt
+  type       ActivityType
+  videoUrl   String?
+  pageType   String?
+  pageHandle String?
+  createdAt  DateTime     @default(now())
+}
+
 model ProductExtendedInfo {
   id            Int          @id @default(autoincrement())
-  productId     BigInt       @unique
+  productId     BigInt
   shop          String
   productTitle  String
   videoUrl      String
-  aiSummary     String
-  highlights    String
+  aiSummary     String?
+  highlights    String?
   source_method SourceMethod
   createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt @db.Timestamp(6)
+  isMain        Boolean      @default(false)
+
+  @@unique([productId, shop, videoUrl])
+}
+
+model Prompt {
+  id        Int      @id @default(autoincrement())
+  shop      String?
+  content   String?
+  carousel  String?
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum SourceMethod {
@@ -51,12 +87,7 @@ enum SourceMethod {
   MANUAL
 }
 
-model Prompt {
-  id        Int      @id @default(autoincrement())
-  shop      String?  // null means it's the global default
-  content   String?   // full prompt text
-  carousel  String?
-  summary   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum ActivityType {
+  VIDEO_PLAY
+  PAGE_VIEW
 }

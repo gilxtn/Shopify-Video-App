@@ -1,4 +1,3 @@
-import { create } from "domain";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 
@@ -21,7 +20,11 @@ export const action = async ({ request }) => {
   const validUrl = await fetch(
     `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
   );
-  console.log("validUrl", validUrl);
+
+  const normalizeUrl = (url) => {
+    return url.replace("www.", ""); 
+  };
+
 
   if (!validUrl.ok) {
     console.log("Invalid URL", validUrl.status);
@@ -174,28 +177,64 @@ export const action = async ({ request }) => {
             },
           );
         }
-        const updatedMetafields =
-          data?.data?.productUpdate?.product?.metafields?.edges || [];
-        await prisma.ProductExtendedInfo.upsert({
-          where: { productId: productId.split("/").pop() },
+        const updatedMetafields =    data?.data?.productUpdate?.product?.metafields?.edges || [];
+        
+        await prisma.productExtendedInfo.updateMany({
+          where: {
+            productId: BigInt(productId.split("/").pop()),
+            shop: session?.shop,
+            isMain: true,
+          },
+          data: { isMain: false },
+        });
+        
+        await prisma.productExtendedInfo.upsert({
+          where: {
+            productId_shop_videoUrl: {
+              productId: BigInt(productId.split("/").pop()),
+              shop: session?.shop,
+              videoUrl: normalizeUrl(url),
+            },
+          },
           update: {
             productTitle: title,
-            videoUrl: url,
             source_method: "MANUAL",
             aiSummary: finalSummary,
             highlights: finalHighlights,
-            shop: session?.shop,
+            isMain: true,
           },
           create: {
-            productId: productId.split("/").pop(),
+            productId: BigInt(productId.split("/").pop()),
             productTitle: title,
-            videoUrl: url,
+            videoUrl: normalizeUrl(url),
             source_method: "MANUAL",
             aiSummary: finalSummary,
             highlights: finalHighlights,
             shop: session?.shop,
+            isMain: true,
           },
         });
+
+        // await prisma.ProductExtendedInfo.upsert({
+        //   where: { productId: productId.split("/").pop() },
+        //   update: {
+        //     productTitle: title,
+        //     videoUrl: url,
+        //     source_method: "MANUAL",
+        //     aiSummary: finalSummary,
+        //     highlights: finalHighlights,
+        //     shop: session?.shop,
+        //   },
+        //   create: {
+        //     productId: productId.split("/").pop(),
+        //     productTitle: title,
+        //     videoUrl: url,
+        //     source_method: "MANUAL",
+        //     aiSummary: finalSummary,
+        //     highlights: finalHighlights,
+        //     shop: session?.shop,
+        //   },
+        // });
         return new Response(
           JSON.stringify({ success: true, message: "Updated Successfully" }),
           {
