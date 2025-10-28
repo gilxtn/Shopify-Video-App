@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 
 export const loader = async ({ request }) => {
   const { admin ,session } = await authenticate.admin(request);
+  console.log("Prisma models available:-------", Object.keys(prisma));
   const shopDomain = session.shop;
   const url = new URL(request.url);
   const timeFilter = url.searchParams.get("time") || "lastWeek";
@@ -38,6 +39,7 @@ export const loader = async ({ request }) => {
   } else if (timeFilter === "lastMonth") {
     dateFilter = { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
   }
+
 
   // --- Fetch all activities for this shop within date range
   const activities = await prisma.activity.findMany({
@@ -369,9 +371,20 @@ export default function Analytics() {
   const shopify = useAppBridge();
   const fetcher = useFetcher();
   const isLoading = fetcher.state !== "idle";
-  useEffect(()=>{ shopify.loading(false); });
-  const { count, products, hasActiveSubscription, shopDomain, timeFilter, noVideoProducts, allVideoTotals } 
-  =fetcher.data || useLoaderData();
+  
+  useEffect(()=>{ shopify.loading(false); },[]);
+  const loaderData = useLoaderData();
+  const data = fetcher.data || loaderData;
+
+  const { 
+    count, 
+    products, 
+    hasActiveSubscription, 
+    shopDomain, 
+    timeFilter, 
+    noVideoProducts, 
+    allVideoTotals 
+  } = data;
   const [modalProduct, setModalProduct] = useState(null);
   const [selectedTime, setSelectedTime] = useState(timeFilter);
   const [currentPage, setCurrentPage] = useState(1);
