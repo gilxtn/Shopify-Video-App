@@ -18,17 +18,18 @@ import {
   Button,
   Select,
   Spinner,
+  EmptyState,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { useLoaderData , useFetcher} from "@remix-run/react";
 import { TitleBar, useAppBridge, Modal } from "@shopify/app-bridge-react";
-import { ChartLineIcon, ViewIcon } from "@shopify/polaris-icons";
+import { ChartLineIcon, ProductIcon, ViewIcon } from "@shopify/polaris-icons";
 import prisma from "../db.server";
 import { useEffect, useState } from "react";
 
 export const loader = async ({ request }) => {
   const { admin ,session } = await authenticate.admin(request);
-  console.log("Prisma models available:-------", Object.keys(prisma));
+  // console.log("Prisma models available:-------", Object.keys(prisma));
   const shopDomain = session.shop;
   const url = new URL(request.url);
   const timeFilter = url.searchParams.get("time") || "lastWeek";
@@ -473,52 +474,60 @@ export default function Analytics() {
                 </BlockStack>
               </Card>
             </InlineGrid>
-            <BlockStack gap="300">
-              <Text variant="headingLg">Top products by plays ({timeOptions.find(o=>o.value===selectedTime)?.label})</Text>
-              <Box padding="0">
-                <DataTable
-                  columnContentTypes={[ "text", "text", "text", "text" , "text" , "text" ]}
-                  headings={["Product","PDP views","Video plays","Play rate","", ""]}
-                  rows={paginatedProducts.map((product) => [
-                    product?.imageUrl ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Thumbnail
-                        source={product?.imageUrl}
-                        alt={product.title}
-                        size="extraSmall"
+            {paginatedProducts.length <= 0 ? <Card>
+              <EmptyState
+                heading="No products with video plays">
+                <p>No products found with video plays in this period.</p>
+              </EmptyState>
+            </Card>: (
+              <BlockStack gap="300">
+                <Text variant="headingLg">Top products by plays ({timeOptions.find(o=>o.value===selectedTime)?.label})</Text>
+                <Box padding="0">
+                  <DataTable
+                    columnContentTypes={[ "text", "text", "text", "text" , "text" , "text" ]}
+                    headings={["Product","PDP views","Video plays","Play rate","", ""]}
+                    rows={paginatedProducts.map((product) => [
+                      product?.imageUrl ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Thumbnail
+                          source={product?.imageUrl}
+                          alt={product.title}
+                          size="extraSmall"
+                        />
+                        {product?.title}
+                        </span>
+                      ) : (
+                        "-"
+                      ),
+                      product?.pdpViews,
+                      product?.playCount,
+                      `${product?.playRate}%`,
+                      <Button variant="plain" 
+                        onClick={() => {
+                          setModalProduct(product); 
+                          shopify.modal.show('preview-modal')
+                        }
+                        }>Preview Video</Button>,
+                      <Button 
+                        icon={ViewIcon}  
+                        onClick={(e) => { e.stopPropagation(); }}
+                        variant="tertiary" url={product.onlineStorePreviewUrl} target="_blank"
                       />
-                      {product?.title}
-                      </span>
-                    ) : (
-                      "-"
-                    ),
-                    product?.pdpViews,
-                    product?.playCount,
-                    `${product?.playRate}%`,
-                    <Button variant="plain" 
-                      onClick={() => {
-                        setModalProduct(product); 
-                        shopify.modal.show('preview-modal')
-                      }
-                      }>Preview Video</Button>,
-                    <Button 
-                      icon={ViewIcon}  
-                      onClick={(e) => { e.stopPropagation(); }}
-                      variant="tertiary" url={product.onlineStorePreviewUrl} target="_blank"
-                    />
-                  ])}
-                />
-                {/* <Pagination
-                  type="table"
-                  hasPrevious={currentPage > 1}
-                  onPrevious={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                  hasNext={currentPage < totalPages}
-                  onNext={() =>
-                    setCurrentPage((p) => Math.min(p + 1, totalPages))
-                  }
-                /> */}
-              </Box>
-            </BlockStack>
+                    ])}
+                  />
+                  {/* <Pagination
+                    type="table"
+                    hasPrevious={currentPage > 1}
+                    onPrevious={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    hasNext={currentPage < totalPages}
+                    onNext={() =>
+                      setCurrentPage((p) => Math.min(p + 1, totalPages))
+                    }
+                  /> */}
+                </Box>
+              </BlockStack>
+            )}
+            {noVideoProducts.length === 0 ? null : (
             <BlockStack gap="300">
               <Text variant="headingLg">Opportunities: products without video</Text>
               <Box padding="0" paddingBlockEnd="500">
@@ -532,7 +541,10 @@ export default function Analytics() {
                         {p.title}
                       </span>
                     ) : (
-                      p.title
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Thumbnail source={ProductIcon} alt={p.title} size="extraSmall" />
+                        {p.title}
+                      </span>
                     ),
                     p?.pdpViews || 0,
                     <Button 
@@ -545,6 +557,7 @@ export default function Analytics() {
                 />
               </Box>
             </BlockStack>
+            )}
           </BlockStack>
         </Layout.Section>
       </Layout>

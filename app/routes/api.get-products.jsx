@@ -142,11 +142,19 @@ export const action = async ({ request }) => {
         id: row.id.toString(),
       }));
 
+      // Find `updatedAt` of main video (isMain = true)
+      const mainRow = productExtendedInfo.find(
+        (info) => info.productId === productId && info.isMain
+      );
+      const lastUpdatedAt = mainRow ? mainRow.updatedAt : null;
+      console.log("lastUpdatedAt for product", productId, lastUpdatedAt);
+
     return {
       ...edge,
       node: {
         ...edge.node,
         extendedInfo: extendedInfoRows,
+        lastUpdatedAt
       },
     };
   });
