@@ -147,7 +147,7 @@ export const action = async ({ request }) => {
         (info) => info.productId === productId && info.isMain
       );
       const lastUpdatedAt = mainRow ? mainRow.updatedAt : null;
-      console.log("lastUpdatedAt for product", productId, lastUpdatedAt);
+      // console.log("lastUpdatedAt for product", productId, lastUpdatedAt);
 
     return {
       ...edge,

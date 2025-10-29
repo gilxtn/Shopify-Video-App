@@ -41,7 +41,6 @@ export const loader = async ({ request }) => {
     dateFilter = { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
   }
 
-
   // --- Fetch all activities for this shop within date range
   const activities = await prisma.activity.findMany({
     where: {
@@ -105,106 +104,6 @@ export const loader = async ({ request }) => {
   const activeSubscriptions = subscriptionResult?.data?.currentAppInstallation?.activeSubscriptions || [];
   const hasActiveSubscription = activeSubscriptions.length > 0 && 
   activeSubscriptions.some(sub => sub.status === "ACTIVE");
-
-
-  // let count = 0;
-  // let hasNextPage = true;
-  // let cursor = null;
-  // const productIds = new Set();
-
-  // while (hasNextPage) {
-  //   const query = `
-  //     query getProducts($cursor: String) {
-  //       products(first: 200, query: "tag:youtubevideo", after: $cursor) {
-  //         pageInfo {
-  //           hasNextPage
-  //         }
-  //         edges {
-  //           cursor
-  //           node {
-  //             id
-  //             title
-  //             featuredMedia {
-  //               preview {
-  //                 image {
-  //                   url
-  //                 }
-  //               }
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   `;
-
-  //   const response = await admin.graphql(query, {
-  //     variables: { cursor },
-  //   });
-  //   const result = await response.json();
-  //   const edges = result.data.products.edges;
-  //   count += edges.length;
-  //   hasNextPage = result.data.products.pageInfo.hasNextPage;
-  //   if (hasNextPage) {
-  //     cursor = edges[edges.length - 1].cursor;
-  //   }
-  //   for (const edge of edges) {
-  //     productIds.add(edge.node.id);
-  //   }
-  // }
-
-  // const products = [];
-  // for (const video of videoStats) {
-  //   const gid = `gid://shopify/Product/${video.productId}`;
-  //   const productQuery = `
-  //     query {
-  //       product(id: "${gid}") {
-  //         id
-  //         title
-  //         onlineStorePreviewUrl
-  //         featuredMedia {
-  //           preview {
-  //             image {
-  //               url
-  //             }
-  //           }
-  //         }
-  //         metafield(key: "youtube_demo_summary", namespace: "custom") {
-  //           value
-  //         }
-  //       }
-  //     }
-  //   `;
-  //   const res = await admin.graphql(productQuery);
-  //   const json = await res.json();
-  //   const product = json.data.product;
-
-  //   if (product) {
-  //     const extended = extendedInfos.find(
-  //       (info) =>
-  //         info.productId === video.productId &&
-  //         info.videoUrl === video.videoUrl
-  //     );
-
-  //     products.push({
-  //       id: video.productId.toString(),
-  //       title: product.title,
-  //       onlineStorePreviewUrl : product.onlineStorePreviewUrl,
-  //       imageUrl: product.featuredMedia?.preview?.image?.url,
-  //       videoUrl: video.videoUrl,
-  //       playCount: video.playCount,
-  //       pdpViews: pageViews[video.productId?.toString()] || 0,
-  //       playRate: (() => {
-  //         const views = pageViewsArr.find(v => v.productId === video.productId)?.viewCount || 0;
-  //         return views > 0 ? Math.round((video.playCount / views) * 100) : 0;
-  //       })(),
-  //       summary: extended?.aiSummary || product?.metafield?.value,
-  //       highlights: extended?.highlights,
-  //       sourceMethod: extended?.source_method,
-  //       isMain: extended?.isMain,
-  //       createdAt: extended?.createdAt,
-  //     });
-  //   }
-  // }
 
   let count = 0;
   let hasNextPage = true;
@@ -286,26 +185,35 @@ export const loader = async ({ request }) => {
       if (!product) continue;
 
       const productId = product.id.replace("gid://shopify/Product/", "");
-      const video = videoMap.get(productId);
-      if (!video) continue;
-
+      const video = videoMap.get(productId); // may be undefined
       const extended = extendedInfos.find(
-        (info) =>
-          info.productId === video.productId &&
-          info.videoUrl === video.videoUrl
+        (info) => info.productId.toString() === productId
       );
 
-      const views = pageViewsArr.find(v => v.productId === video.productId)?.viewCount || 0;
+      const views = pageViewsArr.find((v) => v.productId.toString() === productId)?.viewCount || 0;
+      const plays = video?.playCount || 0;
+      // const video = videoMap.get(productId);
+      // if (!video) continue;
+
+      // const extended = extendedInfos.find(
+      //   (info) =>
+      //     info.productId === video.productId &&
+      //     info.videoUrl === video.videoUrl
+      // );
+      // const views = pageViewsArr.find(v => v.productId === video.productId)?.viewCount || 0;
 
       products.push({
         id: productId,
         title: product.title,
         onlineStorePreviewUrl: product.onlineStorePreviewUrl,
         imageUrl: product.featuredMedia?.preview?.image?.url,
-        videoUrl: video.videoUrl,
-        playCount: video.playCount,
-        pdpViews: pageViews[video.productId?.toString()] || 0,
-        playRate: views > 0 ? Math.round((video.playCount / views) * 100) : 0,
+        videoUrl: video?.videoUrl || extended?.videoUrl || null,
+        playCount: plays,
+        pdpViews: views,
+        playRate: views > 0 ? Math.round((plays / views) * 100) : 0,
+        // playCount: video.playCount,
+        // pdpViews: pageViews[video.productId?.toString()] || 0,
+        // playRate: views > 0 ? Math.round((video.playCount / views) * 100) : 0,
         summary: extended?.aiSummary || product?.metafield?.value,
         highlights: extended?.highlights,
         sourceMethod: extended?.source_method,
@@ -316,6 +224,9 @@ export const loader = async ({ request }) => {
     await new Promise(r => setTimeout(r, 500)); 
   }
 
+  products.sort((a, b) =>
+    b.playCount - a.playCount || b.pdpViews - a.pdpViews
+  );
 
 
 // Fetch products WITHOUT youtubevideo tag or missing metafield
@@ -364,7 +275,23 @@ export const loader = async ({ request }) => {
   // Fetch products WITHOUT youtubevideo tag or missing metafield ENDS
 
 
-  return { count, products,hasActiveSubscription,shopDomain ,timeFilter, noVideoProducts, allVideoTotals   };
+  //coverage all time-------
+  const countsQuery = `
+    query {
+      total: productsCount { count }
+      tagged: productsCount(query: "tag:youtubevideo") { count }
+    }
+  `;
+  const countsRes = await admin.graphql(countsQuery);
+  const countsJson = await countsRes.json();
+  const totalProducts = countsJson?.data?.total?.count || 0;
+  const taggedProducts = countsJson?.data?.tagged?.count || 0;
+ 
+  const coveragePercent = totalProducts ? (((taggedProducts / totalProducts) * 100).toFixed(1).replace(/\.0$/, '')) : 0;
+
+
+
+  return { count, products,hasActiveSubscription,shopDomain ,timeFilter, noVideoProducts, allVideoTotals  ,coveragePercent };
 };
 
 
@@ -376,7 +303,6 @@ export default function Analytics() {
   useEffect(()=>{ shopify.loading(false); },[]);
   const loaderData = useLoaderData();
   const data = fetcher.data || loaderData;
-
   const { 
     count, 
     products, 
@@ -384,12 +310,13 @@ export default function Analytics() {
     shopDomain, 
     timeFilter, 
     noVideoProducts, 
-    allVideoTotals 
+    allVideoTotals ,
+    coveragePercent
   } = data;
   const [modalProduct, setModalProduct] = useState(null);
   const [selectedTime, setSelectedTime] = useState(timeFilter);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 5;
   
   const topProduct = products[0];
   const paginatedProducts = products.slice(
@@ -469,7 +396,7 @@ export default function Analytics() {
               <Card>
                 <BlockStack gap="200">
                   <Text variant="bodyLg" tone="subdued">Coverage</Text>
-                  <Text variant="headingLg">68%</Text>
+                  <Text variant="headingLg">{coveragePercent || 0}%</Text>
                   <Text variant="bodyMd" tone="subdued">products with video</Text>
                 </BlockStack>
               </Card>
@@ -515,7 +442,7 @@ export default function Analytics() {
                       />
                     ])}
                   />
-                  {/* <Pagination
+                  <Pagination
                     type="table"
                     hasPrevious={currentPage > 1}
                     onPrevious={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -523,7 +450,7 @@ export default function Analytics() {
                     onNext={() =>
                       setCurrentPage((p) => Math.min(p + 1, totalPages))
                     }
-                  /> */}
+                  />
                 </Box>
               </BlockStack>
             )}
