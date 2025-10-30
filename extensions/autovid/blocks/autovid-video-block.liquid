@@ -61,11 +61,20 @@
       console.log('Player is ready');
   }
   function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-          console.log('User clicked play on product ID: {{ block.settings.product.id }}');
-         // document.getElementById('action-output').innerText = 'Play action triggered at ' + new Date().toLocaleTimeString();
-           triggerCustomAction();
+    if (event.data === YT.PlayerState.PLAYING) {
+      const videoId = "{{ youtube_video_url }}";
+      const productId = "{{ block.settings.product.id }}";
+      const uniqueKey = `autovid-${productId}-${btoa(videoId)}`;
+
+      // Only trigger once per session for this unique video+product
+      if (!sessionStorage.getItem(uniqueKey)) {
+        sessionStorage.setItem(uniqueKey, "played");
+       // console.log(`Tracking play for ${uniqueKey}`);
+        triggerCustomAction();
+      } else {
+       // console.log(`Already counted play for ${uniqueKey} in this session`);
       }
+    }
   }
 
   function triggerCustomAction() {
