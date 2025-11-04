@@ -4,9 +4,10 @@ import {Page,Layout,IndexTable,Text,Card,Thumbnail,InlineGrid,  Autocomplete, Bo
   useIndexResourceState, IndexFilters, useSetIndexFiltersMode, Badge, Link, ChoiceList, TextField,
   Banner, Spinner, Icon, InlineStack, PageActions, Button, BlockStack, ButtonGroup,
   ActionMenu,
+  Tooltip,
 } from "@shopify/polaris";
 import { TitleBar, useAppBridge, Modal } from "@shopify/app-bridge-react";
-import { CircleChevronLeftIcon, DeleteIcon, TextBlockIcon, ViewIcon } from "@shopify/polaris-icons";
+import { AutomationIcon, CircleChevronLeftIcon, DeleteIcon, EditIcon, LogoYoutubeIcon, PlayCircleIcon, TargetIcon, TextBlockIcon, TextIndentIcon, ViewIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import { formatPrompt, youtubeSummaryPrompt } from "./utils/prompts";
 
@@ -253,13 +254,14 @@ useEffect(() => {
   
 }, [modalProduct, previewVideo]);
 
-// useEffect(()=>{
-//     console.log(modalProduct, "modalProduct");
-//   console.log(previewVideo,"previewVideo");
-//    console.log(modalProduct?.extendedInfo?.find(
-//       (info) => info.videoUrl == previewVideo
-//     ),"previewVideo");
-// }, [modalProduct, previewVideo]);
+useEffect(()=>{
+    console.log(modalProduct, "modalProduct");
+  console.log(previewVideo,"previewVideo");
+   console.log(modalProduct?.extendedInfo?.find(
+      (info) => info.videoUrl == previewVideo
+    ),"previewVideo");
+    console.log(products,"products---")
+}, [modalProduct, previewVideo]);
 
   useEffect(() => {
     if (radioValue[0] === "auto") {
@@ -525,6 +527,7 @@ const handleVideo = async (ids) => {
     const inputIds = Array.isArray(ids) ? ids : selectedResources;
     const idsOnly = inputIds.map((id) => id.split("/").pop());
     const isSingle = idsOnly.length === 1;
+    console.log(isSingle," single----");
     setIsVideoLoading(true);
     const updatedProducts = [];
     const erroredProducts = [];
@@ -546,7 +549,6 @@ const handleVideo = async (ids) => {
         const data = await response.json();
         console.log(data, "data for product--------------" + id);
 
-       
         if (Array.isArray(data.erroredProducts) && data.erroredProducts.length) {
           const titles = data.erroredProducts.map((p) => p.title || p.id).join(", ");
           shopify.toast.show(`Couldn't find videos for ${titles}`, { isError: true });
@@ -556,12 +558,29 @@ const handleVideo = async (ids) => {
  
         if (updated) {
           updatedProducts.push(data);
-          setProducts((prev) => [...prev, data]);
+          // setProducts((prev) => [...prev, data]);
           fetchProducts(currentCursor ?? null, "next");
-          console.log("toast should show")
+          console.log("toast should show");
+          console.log(isSingle,"isSingle");
           shopify.toast.show(`Video generated for ${updated.productTitle || "product"}`, { isError: false });
-        
-   
+        }
+
+        if (isSingle) {
+          console.log("Modal-----------",data);
+          const foundProduct = products.find(
+            (p) => p.id === `gid://shopify/Product/${updated?.productId}`
+          );
+          if (foundProduct) {
+            setModalProduct(foundProduct);
+            setPreviewVideo(updated.metafield?.value || updated.videoUrl);
+            seteditVideoLink(updated.metafield?.value || updated.videoUrl);
+            setIsApplied(false);
+            setEditError("");
+            setRadioValue(["auto"]);
+            shopify.modal.show("demo-modal", { preventCloseOnOverlayClick: true });
+          } else {
+            console.warn(" No matching product found for modal preview");
+          }
         }
 
       } catch (error) {
@@ -819,17 +838,18 @@ const handleBuyPlan = () => {
               headings={[
                 { title: "" },
                 { title: "Product" },
-                { title: "Status" },
-                { title: "Demo video" },
-                { title: "Action" },
-                { title: "Last Updated" },
-                { title: "Inventory" },
-                { title: "Type" },
-                { title: "Video Source" },
+                { title: <InlineGrid gap="100" columns={"auto 1fr"} alignItems="center" ><Icon source={PlayCircleIcon} />Demo video</InlineGrid> },
+                // { title: "Action" },
+                { title: "Last Upload" },
+                // { title: "Video Source" },
                 // { title: "Video Status" },
                 // { title: "Category" },
                 { title: "Vendor" },
+                { title: "Type" },
+                { title: "Status" },
+                { title: "Inventory" },
                 { title: "" }
+
               ]}
             >
               {products.map((product, index) => {
@@ -854,7 +874,8 @@ const handleBuyPlan = () => {
                     ? "Found automatically"
                     : product?.video_source?.value === "MANUAL"
                       ? "Added manually"
-                      : "No video";
+                      : "";
+                const videoSourceValue = product?.video_source?.value;
                 const status = product?.metafield?.value || "No video";
                 return (
                   <IndexTable.Row
@@ -886,20 +907,12 @@ const handleBuyPlan = () => {
                       </Link>
                     </IndexTable.Cell>
                     <IndexTable.Cell>
-                      <Badge size="small"
-                        tone={ product.status === "ACTIVE"   ? "success"
-                            : product.status === "DRAFT" ? "info": ""
-                        }
-                      >
-                        {product.status === "ACTIVE"? "Active"
-                          : product.status === "DRAFT" ? "Draft"
-                          : product.status === "ARCHIVED" || product.status === "ARCHIVE"
-                          ? "Archived" : product.status}
-                      </Badge>
-                    </IndexTable.Cell>
-                    <IndexTable.Cell>
+                      <InlineStack align="" gap="200" blockAlign="center">
                       {product?.metafield?.value ? (
                         <Button
+                          // icon={LogoYoutubeIcon}
+                          // tone="success"
+                          // variant="primary"
                           onClick={() => {
                             setModalProduct(product);
                             setPreviewVideo(product?.metafield?.value);
@@ -914,10 +927,40 @@ const handleBuyPlan = () => {
                           Preview/edit
                         </Button>
                       ) : (
-                        <Button onClick={() => handleVideo([product.id])}>Get Video</Button>
+                        <InlineGrid  columns={"auto auto"} gap="200" alignItems="center">
+                          <Button icon={TargetIcon} size="large" onClick={() => handleVideo([product.id])}>Get Video</Button>
+                          {/* <span onClick={()=>{}}<Icon source={EditIcon}></Icon> */}
+                        </InlineGrid>
                       )}
-                    </IndexTable.Cell>
-                    <IndexTable.Cell>
+                      {videoSourceValue && 
+                      // <div style={{padding: '5px'}}>
+                      //   <Tooltip active content={(videoSourceValue==="AUTO")?"Found automatically":"Added manually"}>
+                      //     <Icon source={(videoSourceValue==="AUTO")?AutomationIcon:TextIndentIcon}/>
+                      //   </Tooltip>
+                      // </div>
+                      <div style={{ position: 'relative', display: 'inline-block' }}  className="video-tooltip-wrapper">
+                        <style>
+                          {` .videosrc-tooltip { display: none;}  .video-tooltip-wrapper:hover .videosrc-tooltip { display: block; }`}
+                        </style>
+                        <div style={{ padding: '5px' }}>
+                          <Icon source={(videoSourceValue==="AUTO")?AutomationIcon:TextIndentIcon} />
+                        </div>
+                        <div className="videosrc-tooltip">
+                          <div style={{  position: 'absolute',  bottom: 'calc(100% - 2px)',  left: '50%',
+                              width: '12px',  height: '12px',  background: '#fff',boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                              border: '1px solid #e1e1e1', transform: 'translateX(-50%) rotate(45deg)', zIndex: 1,
+                            }}
+                          />
+                          <div style={{ position: 'absolute', bottom: '115%', left: '50%', transform: 'translateX(-50%)', border: '1px solid #e1e1e1',
+                              borderRadius: '6px', backgroundColor: '#fff', padding: '5px 7px', minWidth: '123px', textAlign: 'center',
+                              zIndex: 10, boxShadow: '0 2px 6px rgba(0,0,0,0.15)', fontSize: '13px', color: '#202223',
+                            }}
+                          >
+                            {(videoSourceValue==="AUTO")?"Found automatically":"Added manually"}
+                          </div>
+                        </div>
+                      </div>
+                      }
                       {product?.metafield?.value && (
                         <button
                           onClick={() => {
@@ -927,9 +970,10 @@ const handleBuyPlan = () => {
                           title="Delete Video"
                           style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, }}
                         >
-                          <Icon source={DeleteIcon} />
+                          <Icon source={DeleteIcon} tone="critical"/>
                         </button>
                       )}
+                      </InlineStack>
                     </IndexTable.Cell>
                     <IndexTable.Cell>
                       {product?.lastUpdatedAt
@@ -939,6 +983,20 @@ const handleBuyPlan = () => {
                             year: "numeric",
                           })
                         : "-"}
+                    </IndexTable.Cell>
+                    <IndexTable.Cell>{product?.vendor}</IndexTable.Cell>
+                    <IndexTable.Cell> {product?.productType}</IndexTable.Cell>
+                    <IndexTable.Cell>
+                      <Badge size="small"
+                        tone={ product.status === "ACTIVE"   ? "success"
+                            : product.status === "DRAFT" ? "info": ""
+                        }
+                      >
+                        {product.status === "ACTIVE"? "Active"
+                          : product.status === "DRAFT" ? "Draft"
+                          : product.status === "ARCHIVED" || product.status === "ARCHIVE"
+                          ? "Archived" : product.status}
+                      </Badge>
                     </IndexTable.Cell>
                     <IndexTable.Cell>
                       {inventoryStatus?.toLowerCase().startsWith("0 in stock") ||
@@ -953,9 +1011,6 @@ const handleBuyPlan = () => {
                         <Text variant="bodySm" as="span">{inventoryStatus}</Text>
                       )}
                     </IndexTable.Cell>
-                    <IndexTable.Cell> {product?.productType}</IndexTable.Cell>
-                    <IndexTable.Cell>{videoSource}</IndexTable.Cell>
-                    <IndexTable.Cell>{product?.vendor}</IndexTable.Cell>
                     <IndexTable.Cell >
                       <div className="preview-button-wrapper">
                       <style>
@@ -1040,10 +1095,10 @@ const handleBuyPlan = () => {
         </Box>
         <div className={(radioValue[0] === "manual" && !isApplied) ? "automatic-block" : ""} >
           <div id="mainvideo" >
-            <iframe width="100%"  height="400" src={previewVideo} />
+            {previewVideo && <iframe width="100%"  height="400" src={previewVideo} /> }
           </div>
           <Box padding="300">
-            <InlineGrid columns={"1fr auto"} gap="20px" alignItems="start">
+            <InlineGrid columns={"1fr auto"} gap="200" alignItems="start">
               <div className="video-info">
                   <Text as="p" variant="headingMd" fontWeight="bold">
                     {videoMeta?.title || "Loading..."}
@@ -1089,12 +1144,11 @@ const handleBuyPlan = () => {
               >
                 Update
               </Button>
-              <Button  id="cancel-button"
+              <Button id="cancel-button"
                 onClick={() => {
                 shopify.modal.hide("demo-modal");
                 // setAppliedVideoLink(null); 
                 setModalProduct(null);
-                
                 setPreviewVideo(null);
                 setIsApplied(false);
                 setEditError(""); 

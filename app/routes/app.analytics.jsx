@@ -277,10 +277,10 @@ export const loader = async ({ request }) => {
 
   //coverage all time-------
   const countsQuery = `
-    query {
-      total: productsCount { count }
-      tagged: productsCount(query: "tag:youtubevideo") { count }
-    }
+   query {
+    total: productsCount(limit: null) { count }
+    tagged: productsCount(query: "tag:youtubevideo", limit: null) { count }
+  }
   `;
   const countsRes = await admin.graphql(countsQuery);
   const countsJson = await countsRes.json();

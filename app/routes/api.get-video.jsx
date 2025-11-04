@@ -49,7 +49,8 @@ export const action = async ({ request }) => {
     }
     const updateProducts = [];
     const erroredProducts = [];
-    data.forEach(async (item) => {
+    // data.forEach(async (item) => {
+     for (const item of data) {
       if (item.data.metafieldsSet?.userErrors?.length > 0) {
         erroredProducts.push(item.data.productUpdate?.product);
       } else {
@@ -126,7 +127,7 @@ export const action = async ({ request }) => {
 
 
       }
-    });
+   }
 
     console.log(updateProducts, "updateProducts");
     console.log(erroredProducts, "erroredProducts");
