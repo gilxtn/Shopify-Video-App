@@ -21,7 +21,6 @@ If the video is unavailable, broken, or irrelevant, return:
 `;
 
 
-
 export function formatPrompt(template, data) {
   return template
     .replace(/{{videoUrl}}/g, data.youtube_url)
@@ -31,31 +30,33 @@ export function formatPrompt(template, data) {
 }
 
 
-export const youtubeVideoPrompt = `Find the best demo video on YouTube of the product "{{title}}" by "{{vendor}}", specifically a "{{type}}".
-This main video is required and must be returned.
-Also return 4–6 additional relevant demo videos whenever available (Fewer than 4 should only if truly unavailable, private, or broken).
-Prioritize official brand channels and high-quality demos.
-Avoid unboxing or long reviews unless they clearly demonstrate the product.
-Only return videos with transcripts (for later analysis).
-Don't return videos with a negative opinion about the product.
 
-Output format when a video is found:
-{
-  "youtube_url": "https://youtube.com/embed/...",
-  "summary": "Brief sales-style summary based on the video.",
-  "highlights": [
-    { "label": "Key moment 1", "timestamp": "1:22" },
-    { "label": "Key moment 2", "timestamp": "3:10" }
-  ],
-   "other_videos": [
-   { "youtube_url": "https://youtube.com/embed/abc123xyz01" },
-    { "youtube_url": "https://youtube.com/embed/def456uvw02" },
-    { "youtube_url": "https://youtube.com/embed/ghi789rst03" },
-     { "youtube_url": "https://youtube.com/embed/jkl012opq04" }
-    // minimum 4 and maximum 6 entries if possible
-  ]
-}
 
-Only return this error format if the main video is confirmed to be unavailable:
-{ "error": "YouTube URL not found for this video." }`;
+// export const youtubeVideoPrompt = `Find the best demo video on YouTube of the product "{{title}}" by "{{vendor}}", specifically a "{{type}}".
+// This main video is required and must be returned.
+// Also return 4–6 additional relevant demo videos whenever available (Fewer than 4 should only if truly unavailable, private, or broken).
+// Prioritize official brand channels and high-quality demos.
+// Avoid unboxing or long reviews unless they clearly demonstrate the product.
+// Only return videos with transcripts (for later analysis).
+// Don't return videos with a negative opinion about the product.
+
+// Output format when a video is found:
+// {
+//   "youtube_url": "https://youtube.com/embed/...",
+//   "summary": "Brief sales-style summary based on the video.",
+//   "highlights": [
+//     { "label": "Key moment 1", "timestamp": "1:22" },
+//     { "label": "Key moment 2", "timestamp": "3:10" }
+//   ],
+//    "other_videos": [
+//    { "youtube_url": "https://youtube.com/embed/abc123xyz01" },
+//     { "youtube_url": "https://youtube.com/embed/def456uvw02" },
+//     { "youtube_url": "https://youtube.com/embed/ghi789rst03" },
+//      { "youtube_url": "https://youtube.com/embed/jkl012opq04" }
+//     // minimum 4 and maximum 6 entries if possible
+//   ]
+// }
+
+// Only return this error format if the main video is confirmed to be unavailable:
+// { "error": "YouTube URL not found for this video." }`;
 

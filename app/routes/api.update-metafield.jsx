@@ -14,6 +14,8 @@ export const action = async ({ request }) => {
     videoId,
     product_type,
     autoGenerateornot,
+    summary,
+    highlights,
   } = await request.json();
 
   const validUrl = await fetch(
@@ -42,31 +44,60 @@ export const action = async ({ request }) => {
     let finalHighlights;
     const output = await validUrl.json();
     if (output) {
-      const url = `https://www.youtube.com/embed/${videoId}`;
-      // if (autoGenerateornot === "auto") {
-      try {
-        const getsummary = await getVideoSummary({
-          youtube_url: link,
-          title,
-          vendor,
-          product_type,
-        });
-        const result = getsummary?.choices[0]?.message?.content;
-        const summaryData = JSON.parse(result);
-        finalSummary = summaryData?.summary;
-        finalHighlights = JSON.stringify(summaryData?.highlights);
-        console.log("finalSummary", finalSummary);
-        console.log("finalHighlights", finalHighlights);
-      } catch (err) {
-        console.error("getVideoSummary failed", err.message);
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: "Failed to generate video summary",
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 500 },
-        );
+      const url = `https://youtube.com/embed/${videoId}`;
+      if (summary && highlights) {
+        finalSummary = summary;
+        finalHighlights = JSON.stringify(highlights);
+        console.log("✅ Using provided summary/highlights, skipping API call");
+      }else{
+        try{
+          const getsummary = await getVideoSummary({
+            youtube_url: link,
+            title,
+            vendor,
+            product_type,
+          });
+          const result = getsummary?.choices[0]?.message?.content;
+          const summaryData = JSON.parse(result);
+          finalSummary = summaryData?.summary;
+          finalHighlights = JSON.stringify(summaryData?.highlights);
+          console.log("finalSummary", finalSummary);
+          console.log("finalHighlights", finalHighlights);
+        } catch (err) {
+          console.error("getVideoSummary failed", err.message);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: "Failed to generate video summary",
+            }),
+            { headers: { "Content-Type": "application/json" }, status: 500 },
+          );
+        }
       }
+      // if (autoGenerateornot === "auto") {
+      // try {
+      //   const getsummary = await getVideoSummary({
+      //     youtube_url: link,
+      //     title,
+      //     vendor,
+      //     product_type,
+      //   });
+      //   const result = getsummary?.choices[0]?.message?.content;
+      //   const summaryData = JSON.parse(result);
+      //   finalSummary = summaryData?.summary;
+      //   finalHighlights = JSON.stringify(summaryData?.highlights);
+      //   console.log("finalSummary", finalSummary);
+      //   console.log("finalHighlights", finalHighlights);
+      // } catch (err) {
+      //   console.error("getVideoSummary failed", err.message);
+      //   return new Response(
+      //     JSON.stringify({
+      //       success: false,
+      //       message: "Failed to generate video summary",
+      //     }),
+      //     { headers: { "Content-Type": "application/json" }, status: 500 },
+      //   );
+      // }
       try {
         const tagResponse = await admin.graphql(
           `#graphql
@@ -124,7 +155,7 @@ export const action = async ({ request }) => {
                   {
                     namespace: "custom",
                     key: "youtube_demo_video",
-                    value: url,
+                    value: normalizeUrl(url),
                     type: "url",
                   },
                   {
@@ -265,8 +296,7 @@ export const action = async ({ request }) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization:
-          "Bearer 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",
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
       },
       body: JSON.stringify(body),
     });
