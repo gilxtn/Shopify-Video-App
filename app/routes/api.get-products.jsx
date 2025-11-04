@@ -25,10 +25,7 @@ export const action = async ({ request }) => {
       .join(" OR ");
     filterParts.push(`(${vendorFilters})`);
   }
-  // if (filters?.category) {
-  //   const categoryId = filters?.category?.split("/").pop();
-  //   filterParts.push(`category_id:${categoryId}`);
-  // }
+
   if (Array.isArray(filters?.category) && filters.category.length > 0) {
     const categoryFilters = filters.category
       .map((c) => `category_id:${c.split("/").pop()}`)
@@ -49,9 +46,14 @@ export const action = async ({ request }) => {
     vendor: "VENDOR",
     createdAt: "CREATED_AT",
     inventory: "INVENTORY_TOTAL",
+    type: "PRODUCT_TYPE",  
+    updatedAtVideo: "UPDATED_AT",
   };
 
-  const gqlSortKey = sortKeyMap[sortKey] || "CREATED_AT";
+  const gqlSortKey =
+  sortKeyMap[sortKey] && sortKeyMap[sortKey] !== "LOCAL_DB"
+    ? sortKeyMap[sortKey]
+    : "CREATED_AT";
 
   const gqlQuery = `
     query GetProducts($cursor: String, $sortKey: ProductSortKeys, $reverse: Boolean, $query: String) {
@@ -159,10 +161,30 @@ export const action = async ({ request }) => {
     };
   });
 
+    // --- 🔽 ADD THIS BLOCK BELOW (REPLACE responseData definition) ---
+  let edgesSorted = edgesWithExtendedInfo;
+
+  // If sorting by last updated video, sort locally by lastUpdatedAt from DB
+  if (sortKey === "updatedAtVideo") {
+    edgesSorted = [...edgesWithExtendedInfo].sort((a, b) => {
+      const aDate = a.node.lastUpdatedAt ? new Date(a.node.lastUpdatedAt) : new Date(0);
+      const bDate = b.node.lastUpdatedAt ? new Date(b.node.lastUpdatedAt) : new Date(0);
+      return reverse ? bDate - aDate : aDate - bDate;
+    });
+  }
+
   const responseData = {
     ...json.data.products,
-    edges: edgesWithExtendedInfo,
+    edges: edgesSorted,
   };
+  // --- 🔼 END OF NEW BLOCK ---
+
+  // const responseData = {
+  //   ...json.data.products,
+  //   edges: edgesWithExtendedInfo,
+  // };
+
+  
 
   // Use replacer to serialize any remaining BigInt safely
   return new Response(JSON.stringify(responseData, (key, value) =>

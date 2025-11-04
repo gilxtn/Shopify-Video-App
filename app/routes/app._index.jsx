@@ -8,7 +8,7 @@ import {Page,Layout,IndexTable,Text,Card,Thumbnail,InlineGrid,  Autocomplete, Bo
 import { TitleBar, useAppBridge, Modal } from "@shopify/app-bridge-react";
 import { CircleChevronLeftIcon, DeleteIcon, TextBlockIcon, ViewIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
-import { formatPrompt } from "./utils/prompts";
+import { formatPrompt, youtubeSummaryPrompt } from "./utils/prompts";
 
 export const loader = async ({ request }) => {
   const { admin, session, redirect } = await authenticate.admin(request);
@@ -111,8 +111,56 @@ export const loader = async ({ request }) => {
   );
 };
 
+export const action = async ({ request }) => {
+  const { admin, session } = await authenticate.admin(request);
+  const body = await request.json();
+
+  const { youtube_url, title, vendor, product_type } = body;
+
+  const prompt = formatPrompt(youtubeSummaryPrompt, {
+    youtube_url,
+    title,
+    vendor,
+    product_type,
+  });
+
+  const bodyPayload = {
+    model: "sonar-pro",
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+  };
+
+  const response = await fetch("https://api.perplexity.ai/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`, // ✅ works server-side
+    },
+    body: JSON.stringify(bodyPayload),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    return new Response(JSON.stringify({ error: errText }), {
+      status: response.status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const result = await response.json();
+  return new Response(JSON.stringify(result), {
+    headers: { "Content-Type": "application/json" },
+  });
+};
+
+
 export default function ProductTable() {
   const fetcher = useFetcher();
+  const summaryFetcher = useFetcher(); 
   const { tags, categories, vendors, onboardingComplete , shopDomain, findCharge} = useLoaderData();
   const [products, setProducts] = useState([]);
   const [pageInfo, setPageInfo] = useState({ hasNextPage: false });
@@ -145,6 +193,8 @@ export default function ProductTable() {
   const [pageShow, setPageShow] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [radioValue, setRadioValue] = useState(["auto"]);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [localSummary, setLocalSummary] = useState("");
   const shopify = useAppBridge();
   const navigate = useNavigate();
   const handleFiltersQueryChange = useCallback(
@@ -152,17 +202,71 @@ export default function ProductTable() {
     [],
   );
 
+const generateSummary = async () => {
+  setIsGeneratingSummary(true);
+  try {
+    summaryFetcher.submit(
+      JSON.stringify({
+        youtube_url: previewVideo,
+        title: modalProduct?.title || modalProduct?.productTitle,
+        vendor: modalProduct?.vendor,
+        product_type: modalProduct?.productType,
+      }),
+      {
+        method: "post",
+        encType: "application/json",
+      }
+    );
+  } catch (err) {
+    console.error("Error generating summary:", err);
+  }
+};
+
+useEffect(() => {
+  if (summaryFetcher.data && summaryFetcher.state === "idle") {
+    try {
+      const result = summaryFetcher.data;
+      const summaryText = result?.choices?.[0]?.message?.content;
+      if (summaryText) {
+        const parsed = JSON.parse(summaryText);
+        console.log("🟢 Summary:", parsed.summary);
+        console.log("🟢 Highlights:", parsed.highlights);
+       setVideoMeta({
+          ...videoMeta,
+          summary: parsed.summary,
+          highlights: parsed.highlights
+       })
+        setIsGeneratingSummary(false);
+      }
+    } catch (err) {
+      console.error("Error parsing summary result:", err);
+      setIsGeneratingSummary(false);
+    }
+  }
+}, [summaryFetcher.data, summaryFetcher.state]);
+
+
  const activeVideoSummary = useMemo(() => {
   return modalProduct?.extendedInfo?.find(
       (info) => info.videoUrl === previewVideo
     )?.aiSummary || "";
+  
 }, [modalProduct, previewVideo]);
+
+// useEffect(()=>{
+//     console.log(modalProduct, "modalProduct");
+//   console.log(previewVideo,"previewVideo");
+//    console.log(modalProduct?.extendedInfo?.find(
+//       (info) => info.videoUrl == previewVideo
+//     ),"previewVideo");
+// }, [modalProduct, previewVideo]);
 
   useEffect(() => {
     if (radioValue[0] === "auto") {
       const autoMain = modalProduct?.metafield?.value || null;
       if (autoMain) {
-        // setAppliedVideoLink(null); // clear manual override
+           // clear manual override
+        seteditVideoLink(autoMain);
         setPreviewVideo(autoMain);
         setIsApplied(false);
       }
@@ -401,14 +505,18 @@ const filters = [
 ];
 
 const sortOptions = [
-  { label: "Title", value: "title asc", directionLabel: "A-Z" },
-  { label: "Title", value: "title desc", directionLabel: "Z-A" },
+  // { label: "Title", value: "title asc", directionLabel: "A-Z" },
+  // { label: "Title", value: "title desc", directionLabel: "Z-A" },
+  { label: "Type", value: "type asc", directionLabel: "A-Z" },
+  { label: "Type", value: "type desc", directionLabel: "Z-A" },
   { label: "Vendor", value: "vendor asc", directionLabel: "A-Z" },
   { label: "Vendor", value: "vendor desc", directionLabel: "Z-A" },
   { label: "Inventory", value: "inventory asc", directionLabel: "Low to High",},
   { label: "Inventory", value: "inventory desc", directionLabel: "High to Low",},
   { label: "Created", value: "createdAt asc", directionLabel: "Oldest first",},
   { label: "Created", value: "createdAt desc", directionLabel: "Newest first",},
+  { label: "Last Updated", value: "updatedAtVideo asc", directionLabel: "Oldest first",},
+  { label: "Last Updated", value: "updatedAtVideo desc", directionLabel: "Newest first",},
 ];
 const { selectedResources, allResourcesSelected, handleSelectionChange } =  useIndexResourceState(products);
   
@@ -546,15 +654,15 @@ const handleEditVideo = async (product, videoLink, radioValue) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        productId: product.id,
+      productId: product.id,
         link: trimmedLink,
         videoId: videoId,
         title: product.title,
         vendor: product.vendor,
         product_type: product.productType,
         autoGenerateornot: radioValue[0],
-        // summary: editVideoSummary,
-        // highlights: editVideoHighlights,
+        summary: videoMeta?.summary,
+        highlights: videoMeta?.highlights,
       }),
     });
     //  if (radioValue[0] === "manual") {
@@ -900,9 +1008,9 @@ const handleBuyPlan = () => {
                   error={editError}
                   placeholder="Youtube video link"
                   onChange={(value) => {
-                    seteditVideoLink(value); // update field
+                    seteditVideoLink(value);
                     setEditError(""); 
-                    setPreviewVideo(result.trimmedLink);
+                    // setPreviewVideo(result.trimmedLink);
                     document.querySelector('.automatic-block')?.classList.remove('automatic-block');
                     // clear error on typing
                   }}
@@ -943,7 +1051,7 @@ const handleBuyPlan = () => {
                   <Text as="p">{videoMeta?.channel || ""}</Text>
               </div>
               
-              {(activeVideoSummary) ? (
+              {(activeVideoSummary || videoMeta?.summary) ? (
                 <div style={{ position: "relative", display: "inline-block" }} className="tooltip-wrapper" >
                   <style>
                     {`.summary-tooltip-container { display: none;  }
@@ -958,15 +1066,14 @@ const handleBuyPlan = () => {
                       }}
                     >
                       <Text variant="bodyMd" as="p">
-                        {activeVideoSummary}
+                        {activeVideoSummary || videoMeta?.summary}
                       </Text>
                     </div>
                   </div>
                 </div>
               ) : (
-                <Button icon={TextBlockIcon} onClick={()=>{
-                  generateSummary()
-                }}>Generate summary</Button>
+                <Button icon={TextBlockIcon} loading={isGeneratingSummary}
+                onClick={()=>{ generateSummary(); }}>Generate summary</Button>
               )}
             </InlineGrid>
             {/* Carousel */}
