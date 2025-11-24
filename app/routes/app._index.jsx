@@ -928,7 +928,7 @@ const handleBuyPlan = () => {
                         </Button>
                       ) : (
                         <InlineGrid  columns={"auto auto"} gap="200" alignItems="center">
-                          <Button icon={TargetIcon} size="large" onClick={() => handleVideo([product.id])}>Get Video</Button>
+                          <Button icon={TargetIcon} onClick={() => handleVideo([product.id])}>Get Video</Button>
                           {/* <span onClick={()=>{}}<Icon source={EditIcon}></Icon> */}
                         </InlineGrid>
                       )}
