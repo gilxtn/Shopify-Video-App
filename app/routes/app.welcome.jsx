@@ -204,7 +204,7 @@ export default function WelcomePage() {
              <Text variant="headingMd" as="h4">How AutoVid works and who is it for?</Text>
              <List type="bullet">
                 <List.Item>AutoVid works best for multi-brand stores with well-known products - Products with strong online presence generate the highest-quality video results.</List.Item>
-                <List.Item>Not every product will have a suitable video available - If no relevant or positive content exists, AutoVid simply won't assign a video.</List.Item>
+                <List.Item>AutoVid finds pre-made videos created by brands and influencers - not every product has a video about it available online.</List.Item>
                 <List.Item>You can always remove, replace, or manually add your own video - AutoVid gives full control to override any result.</List.Item>
                 <List.Item>Adding videos won’t slow down your store - Videos load only when customers interact, using Shopify’s lightweight theme block.</List.Item>
               </List>
