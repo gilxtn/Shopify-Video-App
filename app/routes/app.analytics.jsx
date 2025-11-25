@@ -23,7 +23,7 @@ import {
 import { authenticate } from "../shopify.server";
 import { useLoaderData , useFetcher} from "@remix-run/react";
 import { TitleBar, useAppBridge, Modal } from "@shopify/app-bridge-react";
-import { ChartLineIcon, ProductIcon, ViewIcon } from "@shopify/polaris-icons";
+import { ChartLineIcon, ProductIcon, TargetIcon, ViewIcon } from "@shopify/polaris-icons";
 import prisma from "../db.server";
 import { useEffect, useState } from "react";
 
@@ -185,6 +185,7 @@ export const loader = async ({ request }) => {
       if (!product) continue;
 
       const productId = product.id.replace("gid://shopify/Product/", "");
+      // console.log("product----hihihi",product)
       const video = videoMap.get(productId); // may be undefined
       const extended = extendedInfos.find(
         (info) => info.productId.toString() === productId
@@ -242,12 +243,15 @@ export const loader = async ({ request }) => {
             title
             tags
             onlineStorePreviewUrl
+            tracksInventory
+            totalInventory
             featuredMedia {
               preview { image { url } }
             }
             metafield(key: "youtube_demo_video", namespace: "custom") {
               value
             }
+
           }
         }
       }
@@ -263,6 +267,9 @@ export const loader = async ({ request }) => {
     const hasMeta = node.metafield?.value && node.metafield?.value.trim() !== "";
     if (!hasMeta) {
       const productId = node.id.replace("gid://shopify/Product/", "");
+      const isAvailable = node.tracksInventory === false || (node.tracksInventory === true && node.totalInventory > 0)
+      console.log("isAvailable",isAvailable, node)
+      if (!isAvailable) continue;
       noVideoProducts.push({
         id: node.id.replace("gid://shopify/Product/", ""),
         title: node.title,
@@ -272,9 +279,8 @@ export const loader = async ({ request }) => {
       });
     }
   }
+  noVideoProducts.sort((a, b) => b.pdpViews - a.pdpViews);
   // Fetch products WITHOUT youtubevideo tag or missing metafield ENDS
-
-
   //coverage all time-------
   const countsQuery = `
    query {
@@ -337,6 +343,99 @@ export default function Analytics() {
   //   url.searchParams.set("time", value);
   //   window.location.href = url.toString(); 
   // }
+  const [generatedVideos, setGeneratedVideos] = useState({});
+  const refreshPageData = () => {
+  
+  }
+  const [loadingProduct, setLoadingProduct] = useState([]);
+  const handleAddVideo = async (ids) => {
+    try {
+      const inputIds = Array.isArray(ids) ? ids : selectedResources;
+      const idsOnly = inputIds.map((id) => id.split("/").pop());
+      const isSingle = idsOnly.length === 1;
+      console.log(isSingle," single----");
+      const updatedProducts = [];
+      const erroredProducts = [];
+
+      // Loop over each product individually
+      for (const id of idsOnly) {
+       setLoadingProduct(prev => [...prev, id]);
+        try {
+          const response = await fetch(`/api/get-video`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify([id]), 
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Something went wrong");
+          }
+
+          const data = await response.json();
+          console.log(data, "data for product--------------" + id);
+
+          if (Array.isArray(data.erroredProducts) && data.erroredProducts.length) {
+            const titles = data.erroredProducts.map((p) => p.title || p.id).join(", ");
+            shopify.toast.show(`Couldn't find videos for ${titles}`, { isError: true });
+          }
+
+          const updated = Array.isArray(data.updateProducts) ? data.updateProducts[0]: data.updateProducts;
+  
+          if (updated) {
+            setGeneratedVideos(prev => ({
+              ...prev,
+              [updated.productId]: updated.videoUrl
+            }));
+            updatedProducts.push(data);
+            refreshPageData();
+            console.log("toast should show");
+            console.log(isSingle,"isSingle");
+            shopify.toast.show(`Video generated for ${updated.productTitle || "product"}`, { isError: false });
+          }
+
+          if (isSingle) {
+            const foundProduct = products.find(
+              (p) => p.id === `gid://shopify/Product/${updated?.productId}`
+            );
+            if (foundProduct) {
+              shopify.modal.show("demo-modal", { preventCloseOnOverlayClick: true });
+            } else {
+              console.warn(" No matching product found for modal preview");
+            }
+          }
+
+        } catch (error) {
+          console.error("Error fetching video for product", id, error);
+          erroredProducts.push(id);
+        }finally {
+          setLoadingProduct(prev => prev.filter(pid => pid !== id));
+        }
+      }
+
+      // Final summary for errored products
+      if (erroredProducts.length) {
+        console.log("toast should show error could not find//")
+        shopify.toast.show(
+          `Couldn't find videos for ${erroredProducts.join(", ")}`,
+          { isError: true }
+        );
+      }
+
+      if (updatedProducts.length) {
+        // shopify.toast.show(  `Video generated for ${updatedProducts.length} product${ updatedProducts.length > 1 ? "s" : "" }`,
+        //   { isError: false }
+        // );
+      }
+    } catch (error) {
+      console.error("Error fetching video:", error);
+      shopify.toast.show(`Error: ${error.message}`, { isError: true });
+    } finally {
+      // setLoadingProduct(prev => prev.filter(pid => pid !== id));
+      refreshPageData();
+    }
+  };
+
   const handleSelectChange = (value) => {
     setSelectedTime(value);
     fetcher.submit(
@@ -460,7 +559,7 @@ export default function Analytics() {
               <Box padding="0" paddingBlockEnd="500">
                 <DataTable
                   columnContentTypes={["text", "text", "text"]}
-                  headings={["Product", "PDP views", "Preview"]}
+                  headings={["Product", "PDP views","", "Preview"]}
                   rows={noVideoProducts.map((p) => [
                     p?.imageUrl ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -472,6 +571,29 @@ export default function Analytics() {
                         <Thumbnail source={ProductIcon} alt={p.title} size="extraSmall" />
                         {p.title}
                       </span>
+                    ),
+                    //here show button or button loading when clicked and in processsing 
+                    generatedVideos[p.id] ? (
+                      <Button 
+                        variant="plain"
+                        onClick={() => {
+                          setModalProduct({
+                            videoUrl: generatedVideos[p.id],
+                            productId: p.id
+                          })
+                          shopify.modal.show('preview-modal')
+                        }}
+                      >
+                        Preview Video
+                      </Button>
+                    ) : (
+                      <Button
+                        icon={TargetIcon}
+                        loading={loadingProduct.includes(p.id)}
+                        onClick={() => handleAddVideo([p.id])}
+                      >
+                        Get Video
+                      </Button>
                     ),
                     p?.pdpViews || 0,
                     <Button 
