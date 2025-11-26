@@ -196,6 +196,8 @@ export default function ProductTable() {
   const [radioValue, setRadioValue] = useState(["auto"]);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [localSummary, setLocalSummary] = useState("");
+  const [deletingIds, setDeletingIds] = useState([]);
+  const [loadingProduct, setLoadingProduct] = useState({});
   const shopify = useAppBridge();
   const navigate = useNavigate();
   const handleFiltersQueryChange = useCallback(
@@ -529,6 +531,16 @@ const handleVideo = async (ids) => {
     const isSingle = idsOnly.length === 1;
     console.log(isSingle," single----");
     setIsVideoLoading(true);
+    setLoadingProduct(prev => {
+      const updated = { ...prev };
+      idsOnly.forEach(pid => { updated[pid] = true });
+      console.log(updated,"updated---hihih--")
+      return updated;
+    });
+    // const updated = { ...prev };
+    // idsOnly.forEach(pid => { updated[pid] = true });
+    // console.log(updated,"updated---hihih--")
+    
     const updatedProducts = [];
     const erroredProducts = [];
 
@@ -563,6 +575,7 @@ const handleVideo = async (ids) => {
           console.log("toast should show");
           console.log(isSingle,"isSingle");
           shopify.toast.show(`Video generated for ${updated.productTitle || "product"}`, { isError: false });
+
         }
 
         if (isSingle) {
@@ -582,10 +595,16 @@ const handleVideo = async (ids) => {
             console.warn(" No matching product found for modal preview");
           }
         }
-
       } catch (error) {
         console.error("Error fetching video for product", id, error);
         erroredProducts.push(id);
+      } finally{
+        console.log(loadingProduct,"loadingproduct hihih")
+        setLoadingProduct(prev => {
+          const updated = { ...prev };
+          delete updated[id];
+          return updated;
+        });
       }
     }
 
@@ -615,23 +634,15 @@ const handleVideo = async (ids) => {
   }
 };
 
-const promotedBulkActions = [
-  {
-    content: "Generate Youtube Video",
-    onAction: handleVideo,
-    disabled: isVideoLoading || selectedResources.length === 0,
-    loading: isVideoLoading,
-  },
-];
-
 const handleDeleteVideo = async (product) => {
   setDeleteLoading(true);
+  setDeletingIds(prev => [...prev, product.id]);
   try {
     const res = await fetch(`/api/delete-metafield`, {
       method: "POST",
       body: JSON.stringify({
         productId: product.id,
-        tags: product.tags,
+        // tags: product.tags,
       }),
       headers: { "Content-Type": "application/json" },
     });
@@ -640,6 +651,7 @@ const handleDeleteVideo = async (product) => {
       shopify.modal.hide("delete-modal");
       shopify.modal.hide("demo-modal");
       setDeleteLoading(false);
+      setDeletingIds(prev => prev.filter(x => x !== product.id));
       fetchProducts(currentCursor ?? null, "next");
       shopify.toast.show(`Video deleted for ${product.title}`);
     }
@@ -648,6 +660,33 @@ const handleDeleteVideo = async (product) => {
     shopify.modal.hide("delete-modal");
     setDeleteLoading(false);
     console.error("Failed to delete metafield:", error);
+    setDeletingIds(prev => prev.filter(x => x !== product.id));
+  }
+};
+
+const bulkDeleteVideos = async () => {
+  setDeleteLoading(true);
+  setDeletingIds(selectedResources);
+  try {
+    const res = await fetch(`/api/delete-metafield`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productIds: selectedResources
+      })
+    });
+
+    const result = await res.json();
+    if (result.success) {
+      shopify.modal.hide("delete-modal");
+      setDeleteLoading(false);
+      fetchProducts(currentCursor ?? null, "next");
+      shopify.toast.show(`Videos deleted successfully`);
+      setDeletingIds([]);
+    }
+  } catch (e) {
+    setDeleteLoading(false);
+    setDeletingIds([]);
   }
 };
 
@@ -750,6 +789,27 @@ const handleBuyPlan = () => {
           window.top.location.href = `https://admin.shopify.com/store/${shopName}/charges/autovid/pricing_plans`
     }
 }
+
+const canBulkDelete = products.some(
+  p => selectedResources.includes(p.id) && p?.metafield?.value
+);
+const promotedBulkActions = [
+  {
+    content: "Find Videos",
+    onAction: handleVideo,
+    disabled: isVideoLoading || selectedResources.length === 0,
+    loading: isVideoLoading,
+  },
+  {
+    content: "Delete Videos",
+    onAction: () => shopify.modal.show("bulk-delete-modal"),
+    destructive: true,
+    disabled: !canBulkDelete || deleteLoading,
+    loading: deleteLoading,
+  }
+];
+
+
   return (
     <>
     {!findCharge && pageShow? (
@@ -801,7 +861,7 @@ const handleBuyPlan = () => {
               setMode={setMode}
               filteringAccessibilityTooltip="Search"
             />
-            {isVideoLoading && (
+            {/* {isVideoLoading && (
               <div style={{ textAlign: "center", padding: "10px 0" }}>
                 <Spinner
                   size="small"
@@ -811,7 +871,7 @@ const handleBuyPlan = () => {
                   Generating videos...
                 </Text>
               </div>
-            )}
+            )} */}
             <IndexTable
               loading={isProductLoading}
               onSelectionChange={handleSelectionChange}
@@ -877,6 +937,7 @@ const handleBuyPlan = () => {
                       : "";
                 const videoSourceValue = product?.video_source?.value;
                 const status = product?.metafield?.value || "No video";
+                const numericProductId = product.id.split("/").pop();
                 return (
                   <IndexTable.Row
                     id={product.id}
@@ -908,7 +969,10 @@ const handleBuyPlan = () => {
                     </IndexTable.Cell>
                     <IndexTable.Cell>
                       <InlineStack align="" gap="200" blockAlign="center">
-                      {product?.metafield?.value ? (
+                        
+                      {loadingProduct[numericProductId] ? (
+                        <Spinner size="small" />
+                      ) :product?.metafield?.value ? (
                         <Button
                           // icon={LogoYoutubeIcon}
                           // tone="success"
@@ -961,7 +1025,8 @@ const handleBuyPlan = () => {
                         </div>
                       </div>
                       }
-                      {product?.metafield?.value && (
+                      {deletingIds.includes(product.id) ? (<Spinner size="small" />) :
+                      (product?.metafield?.value && (
                         <button
                           onClick={() => {
                             setModalDelete(product);
@@ -972,7 +1037,7 @@ const handleBuyPlan = () => {
                         >
                           <Icon source={DeleteIcon} tone="critical"/>
                         </button>
-                      )}
+                      ))}
                       </InlineStack>
                     </IndexTable.Cell>
                     <IndexTable.Cell>
@@ -1183,6 +1248,36 @@ const handleBuyPlan = () => {
                 Delete
               </Button>
               <Button onClick={() => shopify.modal.hide("delete-modal")}>
+                Close
+              </Button>
+            </ButtonGroup>
+          </InlineStack>
+        </Page>
+      </Modal>
+      <Modal id="bulk-delete-modal">
+        {console.log(deleteLoading,"setDeleteLoading---")}
+        <TitleBar title="Delete Videos"></TitleBar>
+        <Page>
+          <BlockStack gap="200">
+            <Text variant="bodyLg" as="p">
+              Are you sure you want to delete videos for {selectedResources.length} products?
+            </Text>
+          </BlockStack>
+          <br/>
+          <InlineStack wrap={false} align="end">
+            <ButtonGroup>
+              <Button
+                tone="critical"
+                variant="primary"
+                loading={deleteLoading}
+                onClick={() => {
+                  shopify.modal.hide("bulk-delete-modal");
+                  bulkDeleteVideos();
+                }}
+              >
+                Delete
+              </Button>
+              <Button onClick={() => shopify.modal.hide("bulk-delete-modal")}>
                 Close
               </Button>
             </ButtonGroup>
