@@ -45,7 +45,11 @@ export const action = async ({ request }) => {
     const output = await validUrl.json();
     if (output) {
       const url = `https://youtube.com/embed/${videoId}`;
-      if (summary && highlights) {
+      if (autoGenerateornot === "manual" && (!summary || !highlights)) {
+        finalSummary = "";
+        finalHighlights = "[]";
+        console.log("Manual mode no summary/highlights provided skipping generation");
+      } else  if (summary && highlights) {
         finalSummary = summary;
         finalHighlights = JSON.stringify(highlights);
         console.log("✅ Using provided summary/highlights, skipping API call");
@@ -124,6 +128,36 @@ export const action = async ({ request }) => {
           ? existingTags
           : [...existingTags, "youtubevideo"];
 
+
+        if (finalSummary === "") {
+          await admin.graphql(`
+            mutation DeleteSummary($metafields: [MetafieldIdentifierInput!]!) {
+              metafieldsDelete(metafields: $metafields) {
+                deletedMetafields {
+                  key
+                  namespace
+                  ownerId
+                }
+                userErrors {
+                  field
+                  message
+                }
+              }
+            }
+          `, {
+            variables: {
+              metafields: [
+                {
+                  ownerId: productId,
+                  namespace: "custom",
+                  key: "youtube_demo_summary"
+                }
+              ]
+            }
+          });
+        }
+
+
         const response = await admin.graphql(
           `#graphql
         mutation UpdateProductMetafield($input: ProductInput!) {
@@ -167,7 +201,7 @@ export const action = async ({ request }) => {
                   {
                     namespace: "custom",
                     key: "youtube_demo_summary",
-                    value: finalSummary,
+                    value: finalSummary || " ",
                     type: "multi_line_text_field",
                   },
                   {
@@ -186,7 +220,7 @@ export const action = async ({ request }) => {
         const data = await response.json();
 
         const errors = data?.data?.productUpdate?.userErrors || [];
-
+        console.log(data?.data?.productUpdate,"data?.data?.productUpdate--")
         if (errors.length > 0) {
           console.error("Shopify userErrors:", errors);
           return new Response(
@@ -256,7 +290,7 @@ export const action = async ({ request }) => {
         //   },
         // });
         return new Response(
-          JSON.stringify({ success: true, message: "Updated Successfully" }),
+          JSON.stringify({ success: true, message: "Updated Successfully" , data:data?.data?.productUpdate }),
           {
             status: 200,
             headers: { "Content-Type": "application/json" },

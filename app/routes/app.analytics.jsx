@@ -268,7 +268,7 @@ export const loader = async ({ request }) => {
     if (!hasMeta) {
       const productId = node.id.replace("gid://shopify/Product/", "");
       const isAvailable = node.tracksInventory === false || (node.tracksInventory === true && node.totalInventory > 0)
-      console.log("isAvailable",isAvailable, node)
+      // console.log("isAvailable",isAvailable, node)
       if (!isAvailable) continue;
       noVideoProducts.push({
         id: node.id.replace("gid://shopify/Product/", ""),
