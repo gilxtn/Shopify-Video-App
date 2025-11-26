@@ -572,6 +572,7 @@ export default function Analytics() {
                         {p.title}
                       </span>
                     ),
+                    p?.pdpViews || 0,
                     //here show button or button loading when clicked and in processsing 
                     generatedVideos[p.id] ? (
                       <Button 
@@ -595,7 +596,6 @@ export default function Analytics() {
                         Get Video
                       </Button>
                     ),
-                    p?.pdpViews || 0,
                     <Button 
                       icon={ViewIcon} 
                       variant="tertiary" 
