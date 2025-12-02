@@ -6,7 +6,7 @@ Your task is to:
 2. Write a concise, sales-focused summary that highlights the product's value.
 3. Identify 3-5 key highlights with timestamps showing important demo moments.
 
-Output strictly in this JSON format:
+Output strictly in this JSON format only and no other text:
 {
   "youtube_url": "{{videoUrl}}",
   "summary": "Brief but compelling summary of the product demo.",
@@ -16,7 +16,7 @@ Output strictly in this JSON format:
   ]
 }
 
-If the video is unavailable, broken, or irrelevant, return:
+If the video is unavailable, broken, or irrelevant or any other issue, return:
 { "error": "Unable to process this video." }
 `;
 
