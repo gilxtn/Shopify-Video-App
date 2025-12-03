@@ -847,6 +847,9 @@ export default function ProductTable() {
         shopify.modal.hide("demo-modal");
         setDeleteLoading(false);
         setDeletingIds((prev) => prev.filter((x) => x !== product.id));
+        setFailedVideoProducts((prev) =>
+          prev.filter((id) => id !== product.id),
+        );
         fetchProducts(currentCursor ?? null, "next");
         shopify.toast.show(`Video deleted for ${product.title}`);
       }
@@ -878,6 +881,9 @@ export default function ProductTable() {
         fetchProducts(currentCursor ?? null, "next");
         shopify.toast.show(`Videos deleted successfully`);
         setDeletingIds([]);
+        setFailedVideoProducts((prev) =>
+          prev.filter((id) => !selectedResources.includes(id)),
+        );
       }
     } catch (e) {
       setDeleteLoading(false);
@@ -1014,22 +1020,34 @@ export default function ProductTable() {
   const markVideoOpened = async (product) => {
     try {
       const numericId = product.id.split("/").pop();
+      const mainInfo =
+        product.extendedInfo?.find((info) => info?.isMain) ||
+        product.extendedInfo?.[0];
+
+      if (!mainInfo) return;
+
+      const extendedInfoId = mainInfo.id;
+      const videoUrl = mainInfo.videoUrl;
 
       await fetch("/api/mark-video-opened", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: numericId }),
+        body: JSON.stringify({
+          productId: numericId,
+          extendedInfoId,
+          videoUrl,
+        }),
       });
       setProducts((prev) =>
         prev.map((p) =>
           p.id === product.id
             ? {
                 ...p,
-                extendedInfo: p.extendedInfo
-                  ? p.extendedInfo.map((info) =>
-                      info.isMain ? { ...info, isOpened: true } : info,
-                    )
-                  : p.extendedInfo,
+                extendedInfo: p.extendedInfo?.map((info) =>
+                  info.id === extendedInfoId && info.videoUrl === videoUrl
+                    ? { ...info, isOpened: true }
+                    : info,
+                ),
               }
             : p,
         ),
@@ -1185,8 +1203,9 @@ export default function ProductTable() {
                       const totalInventory = product?.totalInventory ?? null;
                       const tracked = product?.tracksInventory;
                       const variantCount = product?.variantsCount?.count ?? 0;
-                      const hasSeenVideo =
-                        product.extendedInfo?.[0]?.isOpened === true;
+                      const hasSeenVideo = product.extendedInfo?.some(
+                        (info) => info?.isOpened === true,
+                      );
                       const hasAutoFailed = failedVideoProducts.includes(
                         product.id,
                       );
@@ -1266,7 +1285,7 @@ export default function ProductTable() {
                                         background-color: ${hasSeenVideo ? "#077555" : "#0FA479"} !important;
                                         border: 0.2px solid ${hasSeenVideo ? "#046449" : "#0d946e"} !important;
                                         box-shadow: none !important;
-                                        padding:${hasSeenVideo ? "6px 7px" : "6px 4px"} !important;
+                                        padding:${hasSeenVideo ? "6px 7px" : "6px 3.5px"} !important;
                                       }
                                       #preview-edit-button-${product.id.split("/").pop()}:hover {
                                         background-color: ${hasSeenVideo ? "#045e44" : "#099c73ff"} !important;

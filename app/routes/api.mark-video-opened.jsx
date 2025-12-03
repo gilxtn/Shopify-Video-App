@@ -15,29 +15,36 @@ export const action = async ({ request }) => {
     }
 
     const body = await request.json();
-    const { productId } = body;
+    const { productId, extendedInfoId, videoUrl } = body;
 
-    if (!productId) {
+    if (!productId || !extendedInfoId || !videoUrl) {
       return json(
-        { success: false, error: "productId is required" },
+        {
+          success: false,
+          error: "productId, extendedInfoId and videoUrl are required",
+        },
         { status: 400 },
       );
     }
 
-    let numericId;
+    let numericProductId;
+    let numericExtendedInfoId;
+
     try {
-      // const numericId = BigInt(productId.split("/").pop());
-      numericId = BigInt(productId.toString());
+      numericProductId = BigInt(productId.toString());
+      numericExtendedInfoId = BigInt(extendedInfoId.toString());
     } catch (e) {
       return json(
-        { success: false, error: "Invalid productId format" },
+        { success: false, error: "Invalid id format" },
         { status: 400 },
       );
     }
     const result = await prisma.productExtendedInfo.updateMany({
       where: {
+        id: numericExtendedInfoId,
         shop,
-        productId: numericId,
+        productId: numericProductId,
+        videoUrl,
       },
       data: {
         isOpened: true,
@@ -47,7 +54,7 @@ export const action = async ({ request }) => {
       return json(
         {
           success: false,
-          error: "No productExtendedInfo row found for this product",
+          error: "No productExtendedInfo row found for given productId, extendedInfoId and videoUrl",
         },
         { status: 404 },
       );
