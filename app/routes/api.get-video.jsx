@@ -74,7 +74,7 @@ export const action = async ({ request }) => {
           aiSummary: aiSummary?.value,
           highlights: highlights?.value,
         };
-        
+
     const existingTags = item.data.productUpdate?.product?.tags || [];
 
     if (!existingTags.includes("youtubevideo")) {
@@ -100,7 +100,7 @@ export const action = async ({ request }) => {
         console.error("Failed to add youtubevideo tag", err);
       }
     }
-        
+
         updateProducts.push(productInfo);
 
          // 1. Delete all old videos for this product + shop
@@ -110,7 +110,7 @@ export const action = async ({ request }) => {
             shop,
           },
         });
-        
+
          // 2. Insert main video (true) from youtube_demo_video metafield
         await prisma.productExtendedInfo.create({
           data: {
@@ -122,6 +122,7 @@ export const action = async ({ request }) => {
             highlights: highlights?.value,
             source_method: "AUTO",
             isMain: true,
+            isOpened: false,
           },
         });
 
