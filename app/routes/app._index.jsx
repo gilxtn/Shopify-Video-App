@@ -1441,7 +1441,8 @@ export default function ProductTable() {
                                 </InlineStack>
                               )}
                               {hasAutoFailed && !product?.metafield?.value && (
-                                <button
+                                <Button
+                                  icon={EditIcon}
                                   onClick={() => {
                                     setIsManualOnlyMode(true);
                                     setModalProduct(product);
@@ -1456,27 +1457,7 @@ export default function ProductTable() {
                                     });
                                   }}
                                   title="Add YouTube video manually"
-                                  style={{
-                                    border: "none",
-                                    background: "transparent",
-                                    cursor: "pointer",
-                                    // padding: "5px 5px 5px 13px",
-                                    padding: 0,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      margin: "2px",
-                                      padding: "3px",
-                                      border: "0.5px solid #909090",
-                                      borderRadius: "5px",
-                                    }}
-                                  >
-                                    <Icon
-                                      source={EditIcon}
-                                    />
-                                  </div>
-                                </button>
+                                />
                               )}
                               {videoSourceValue && (
                                 // <div style={{padding: '5px'}}>
