@@ -1004,13 +1004,30 @@ export default function ProductTable() {
   );
   const promotedBulkActions = [
     {
-      content: "Find Videos",
+      // content: "Get Videos",
+      content: (
+        <InlineGrid columns="auto 1fr" gap="100" alignItems="center">
+          <Icon source={TargetIcon} />
+          <Text variant="bodySm" fontWeight="semibold">
+            Get Videos
+          </Text>
+        </InlineGrid>
+      ),
       onAction: handleVideo,
       disabled: isVideoLoading || selectedResources.length === 0,
       loading: isVideoLoading,
     },
     {
-      content: "Delete Videos",
+      // content: "Delete Videos",
+      content: (
+        <InlineGrid columns="auto 1fr" gap="100" alignItems="center">
+          <Icon source={DeleteIcon} />
+          <Text variant="bodySm" fontWeight="semibold">
+            Delete
+          </Text>
+        </InlineGrid>
+      ),
+      // icon: DeleteIcon,
       onAction: () => shopify.modal.show("bulk-delete-modal"),
       destructive: true,
       disabled: !canBulkDelete || deleteLoading,
@@ -1148,6 +1165,69 @@ export default function ProductTable() {
                 </Text>
               </div>
             )} */}
+                  <style>
+                    {`
+                      .Polaris-IndexTable__BulkActionsWrapper.Polaris-IndexTable__BulkActionsWrapperVisible{
+                        padding-right: 15px !important;
+                      }
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton:first-of-type
+                      .Polaris-Icon__Svg {
+                        fill: #ffffff !important;
+                      }
+
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton:nth-of-type(2)
+                      .Polaris-Icon__Svg {
+                        fill: #ffffff !important;
+                      }
+                      .Polaris-BulkActions__BulkActionButton .Polaris-Button--variantSecondary{
+                          box-shadow: none !important;
+                          color: #ffffff !important;
+                      }
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton:first-of-type
+                      .Polaris-Button {
+                        background-color: #077555 !important;
+                        border-color: #077555 !important;
+                        color: #ffffff !important;
+                        margin-right: 8px;
+                        // font-weight: 600;
+                      }
+
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton:first-of-type
+                      .Polaris-Button:hover {
+                        background-color: #077555 !important;
+                        border-color: #077555 !important;
+                        color: #ffffff !important;
+                      }
+
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton:nth-of-type(2)
+                      .Polaris-Button {
+                        background-color: #CF0909 !important;
+                        border-color: #CF0909 !important;
+                        color: #ffffff !important;
+                        // font-weight: 600;
+                      }
+
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton:nth-of-type(2)
+                      .Polaris-Button:hover {
+                        background-color: #CF0909 !important;
+                        border-color: #CF0909 !important;
+                        color: #ffffff !important;
+                      }
+
+                      .Polaris-BulkActions__BulkActionsLayout
+                      .Polaris-BulkActions__BulkActionButton
+                      .Polaris-Button {
+                        border-radius: 10px !important;
+                        // min-height: 32px !important;
+                      }
+                    `}
+                  </style>
                   <IndexTable
                     loading={isProductLoading}
                     onSelectionChange={handleSelectionChange}
@@ -1282,14 +1362,15 @@ export default function ProductTable() {
                                   <style>
                                     {`
                                       #preview-edit-button-${product.id.split("/").pop()} {
+                                        // min-width: 111.28px !important;
                                         background-color: ${hasSeenVideo ? "#077555" : "#0FA479"} !important;
-                                        border: 0.2px solid ${hasSeenVideo ? "#046449" : "#0d946e"} !important;
+                                        // border: 0.2px solid ${hasSeenVideo ? "#046449" : "#0d946e"} !important;
                                         box-shadow: none !important;
-                                        padding:${hasSeenVideo ? "6px 7px" : "6px 3.5px"} !important;
+                                        // padding:${hasSeenVideo ? "6px 7px" : "6px 3.5px"} !important;
                                       }
                                       #preview-edit-button-${product.id.split("/").pop()}:hover {
                                         background-color: ${hasSeenVideo ? "#045e44" : "#099c73ff"} !important;
-                                        border-color:${hasSeenVideo ? "#046449" : "#0d7c5d"} !important;
+                                        // border-color:${hasSeenVideo ? "#046449" : "#0d7c5d"} !important;
                                         box-shadow: none !important;
                                       }
                                     `}
@@ -1324,20 +1405,32 @@ export default function ProductTable() {
                                         markVideoOpened(product);
                                     }}
                                   >
-                                    <Text variant="bodySm">
+                                    <Text
+                                      variant="bodySm"
+                                      fontWeight="semibold"
+                                    >
                                       {hasSeenVideo
                                         ? "View & Edit"
-                                        : "Preview/Edit"}
+                                        : "View & Edit"}
                                     </Text>
                                   </Button>
                                 </>
                               ) : (
-                                <InlineGrid
+                                <InlineStack
                                   columns={"auto auto"}
-                                  gap="200"
+                                  // gap="050"
                                   alignItems="center"
                                 >
+                                  <style>
+                                    {`
+
+                                      #get-video-button-${product.id.split("/").pop()} {
+                                        min-width: 103.98px !important;
+                                      }
+                                    `}
+                                  </style>
                                   <Button
+                                    id={`get-video-button-${product.id.split("/").pop()}`}
                                     icon={TargetIcon}
                                     onClick={() => handleVideo([product.id])}
                                   >
@@ -1345,35 +1438,27 @@ export default function ProductTable() {
                                   </Button>
 
                                   {/* <span onClick={()=>{}}<Icon source={EditIcon}></Icon> */}
-                                  {hasAutoFailed && (
-                                    <button
-                                      onClick={() => {
-                                        setIsManualOnlyMode(true);
-                                        setModalProduct(product);
-                                        setPreviewVideo("");
-                                        seteditVideoLink("");
-                                        setVideoMeta(null);
-                                        setIsApplied(false);
-                                        setEditError("");
-                                        setRadioValue(["manual"]);
-                                        shopify.modal.show("demo-modal", {
-                                          preventCloseOnOverlayClick: true,
-                                        });
-                                      }}
-                                      title="Add YouTube video manually"
-                                      style={{
-                                        border: "none",
-                                        background: "transparent",
-                                        cursor: "pointer",
-                                        padding: "5px 5px 5px 13px",
-                                      }}
-                                    >
-                                      <Icon source={EditIcon} />
-                                    </button>
-                                  )}
-                                </InlineGrid>
+                                </InlineStack>
                               )}
-
+                              {hasAutoFailed && !product?.metafield?.value && (
+                                <Button
+                                  icon={EditIcon}
+                                  onClick={() => {
+                                    setIsManualOnlyMode(true);
+                                    setModalProduct(product);
+                                    setPreviewVideo("");
+                                    seteditVideoLink("");
+                                    setVideoMeta(null);
+                                    setIsApplied(false);
+                                    setEditError("");
+                                    setRadioValue(["manual"]);
+                                    shopify.modal.show("demo-modal", {
+                                      preventCloseOnOverlayClick: true,
+                                    });
+                                  }}
+                                  title="Add YouTube video manually"
+                                />
+                              )}
                               {videoSourceValue && (
                                 // <div style={{padding: '5px'}}>
                                 //   <Tooltip active content={(videoSourceValue==="AUTO")?"Found automatically":"Added manually"}>
