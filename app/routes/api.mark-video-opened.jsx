@@ -32,7 +32,7 @@ export const action = async ({ request }) => {
 
     try {
       numericProductId = BigInt(productId.toString());
-      numericExtendedInfoId = BigInt(extendedInfoId.toString());
+      numericExtendedInfoId = Number(extendedInfoId);
     } catch (e) {
       return json(
         { success: false, error: "Invalid id format" },
