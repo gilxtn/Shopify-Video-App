@@ -1344,13 +1344,20 @@ export default function ProductTable() {
                                 );
                               }}
                             >
-                              <Text
-                                variant="bodySm"
-                                fontWeight="regular"
-                                as="span"
+                              <div
+                                style={{
+                                  maxWidth: "180px",
+                                  textWrap: "auto"
+                                }}
                               >
-                                {product?.title || "-"}
-                              </Text>
+                                <Text
+                                  variant="bodySm"
+                                  fontWeight="regular"
+                                  as="span"
+                                >
+                                  {product?.title || "-"}
+                                </Text>
+                              </div>
                             </Link>
                           </IndexTable.Cell>
                           <IndexTable.Cell>
