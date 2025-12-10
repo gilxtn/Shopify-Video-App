@@ -1447,7 +1447,7 @@ export default function ProductTable() {
                                   {/* <span onClick={()=>{}}<Icon source={EditIcon}></Icon> */}
                                 </InlineStack>
                               )}
-                              {hasAutoFailed && !product?.metafield?.value && (
+                              {!loadingProduct[numericProductId] && !product?.metafield?.value && (
                                 <Button
                                   icon={EditIcon}
                                   onClick={() => {

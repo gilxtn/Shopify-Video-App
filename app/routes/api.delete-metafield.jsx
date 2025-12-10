@@ -128,7 +128,7 @@
 //   }
 // };
 
-
+import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 
 export const action = async ({ request }) => {
@@ -137,28 +137,27 @@ export const action = async ({ request }) => {
     const { productIds, productId } = await request.json();
     const ids = productIds || [productId];
 
-
-for (const productId of ids) {
-  const tagResp = await admin.graphql(`
+    for (const productId of ids) {
+      const tagResp = await admin.graphql(`
     query {
       product(id: "${productId}") {
         tags
       }
     }
   `);
-  const tagData = await tagResp.json();
-  const currentTags = tagData.data.product.tags || [];
+      const tagData = await tagResp.json();
+      const currentTags = tagData.data.product.tags || [];
 
-  // const updatedTags = currentTags.filter(
-  //   t => t.toLowerCase() !== "youtubevideo"
-  // );
-    const updatedTags = currentTags.filter(
-      (tag) => tag.toLowerCase() !== "youtubevideo",
-    );
+      // const updatedTags = currentTags.filter(
+      //   t => t.toLowerCase() !== "youtubevideo"
+      // );
+      const updatedTags = currentTags.filter(
+        (tag) => tag.toLowerCase() !== "youtubevideo",
+      );
 
-    // Delete the YouTube video metafield
-    const deleteResponse = await admin.graphql(
-      `#graphql
+      // Delete the YouTube video metafield
+      const deleteResponse = await admin.graphql(
+        `#graphql
         mutation metafieldsDelete($metafields: [MetafieldIdentifierInput!]!) {
           metafieldsDelete(metafields: $metafields) {
             deletedMetafields {
@@ -172,50 +171,80 @@ for (const productId of ids) {
             }
           }
         }`,
-      {
-        variables: {
-          metafields: [
-            {
-              key: "youtube_demo_video",
-              namespace: "custom",
-              ownerId: productId,
-            },
-            {
-              key: "video_source",
-              namespace: "custom",
-              ownerId: productId,
-            },
-            {
-              key: "youtube_demo_highlights",
-              namespace: "custom",
-              ownerId: productId,
-            },
-            {
-              key: "youtube_demo_summary",
-              namespace: "custom",
-              ownerId: productId,
-            },
-          ],
-        },
-      },
-    );
-
-    const deleteData = await deleteResponse.json();
-
-    if (deleteData.errors) {
-      console.error("Error deleting metafield:", deleteData.errors);
-      return new Response(
-        JSON.stringify({ success: false, errors: deleteData.errors }),
         {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
+          variables: {
+            metafields: [
+              {
+                key: "youtube_demo_video",
+                namespace: "custom",
+                ownerId: productId,
+              },
+              {
+                key: "video_source",
+                namespace: "custom",
+                ownerId: productId,
+              },
+              {
+                key: "youtube_demo_highlights",
+                namespace: "custom",
+                ownerId: productId,
+              },
+              {
+                key: "youtube_demo_summary",
+                namespace: "custom",
+                ownerId: productId,
+              },
+            ],
+          },
         },
       );
-    }
 
-    // Update product tags
-    const updateResponse = await admin.graphql(
-      `#graphql
+      const deleteData = await deleteResponse.json();
+
+      if (deleteData.errors) {
+        console.error("Error deleting metafield:", deleteData.errors);
+        return new Response(
+          JSON.stringify({ success: false, errors: deleteData.errors }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      try {
+        if(!productId) {
+          throw new Error("productId is required");
+        }
+        const NumericProductId = Number(productId.split("/").pop());
+        const rawId = productId.split("/").pop();
+        if (!rawId || isNaN(Number(rawId))) {
+          throw new Error(`Invalid product id extracted: ${rawId}`);
+        }
+        const deleted = await prisma.productExtendedInfo.deleteMany({
+          where: {
+            productId: NumericProductId,
+            source_method: "MANUAL",
+          },
+        });
+        console.log(
+          `Deleted ${deleted.count} productExtendedInfo rows (source_method=MANUAL) for product ${productId}`,
+        );
+      } catch (prismaErr) {
+        console.error(
+          "Prisma delete error for productExtendedInfo:",
+          prismaErr,
+        );
+        return new Response(
+          JSON.stringify({ success: false, error: prismaErr.message }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      // Update product tags
+      const updateResponse = await admin.graphql(
+        `#graphql
         mutation UpdateProductMetafield($input: ProductInput!) {
           productUpdate(input: $input) {
             product {
@@ -228,41 +257,42 @@ for (const productId of ids) {
             }
           }
         }`,
-      {
-        variables: {
-          input: {
-            id: productId,
-            tags: updatedTags,
+        {
+          variables: {
+            input: {
+              id: productId,
+              tags: updatedTags,
+            },
           },
         },
-      },
-    );
-
-    const updateData = await updateResponse.json();
-
-    if (
-      updateData.errors ||
-      updateData.data?.productUpdate?.userErrors?.length
-    ) {
-      console.error(
-        "Error updating product tags:",
-        updateData.errors || updateData.data.productUpdate.userErrors,
       );
-      return new Response(
-        JSON.stringify({
-          success: false,
-          errors: updateData.errors || updateData.data.productUpdate.userErrors,
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+
+      const updateData = await updateResponse.json();
+
+      if (
+        updateData.errors ||
+        updateData.data?.productUpdate?.userErrors?.length
+      ) {
+        console.error(
+          "Error updating product tags:",
+          updateData.errors || updateData.data.productUpdate.userErrors,
+        );
+        return new Response(
+          JSON.stringify({
+            success: false,
+            errors:
+              updateData.errors || updateData.data.productUpdate.userErrors,
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
     }
-  }
     return new Response(JSON.stringify({ success: true }), {
       headers: { "Content-Type": "application/json" },
- });
+    });
   } catch (error) {
     console.error("Unexpected error:", error);
     return new Response(
@@ -272,5 +302,5 @@ for (const productId of ids) {
         headers: { "Content-Type": "application/json" },
       },
     );
- }
+  }
 };
